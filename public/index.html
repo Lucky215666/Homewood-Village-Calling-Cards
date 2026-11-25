@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#38523F">
 <title>旧林游 · 乡村名片 —— 村村有名片，千村千样</title>
 <meta name="description" content="旧林游·乡村名片展示平台。每一个乡村都有一张属于自己的数字名片，把村情简介、建村历史、民俗文化、乡村好物、景点去处与精品线路搬到线上，做成一张可以被人看见、被人转发的数字名片。">
-<link rel="stylesheet" href="/style.css?v=39">
+<link rel="stylesheet" href="/style.css?v=40">
 </head>
 <body>
 
@@ -23,7 +23,7 @@
       <img class="brand-logo" src="/img/logo.png" alt="旧林游 · 乡村名片">
       <span class="brand-text">乡村名片</span>
     </a>
-    <nav class="nav-links" aria-label="主导航">
+    <nav class="nav-links nav-links-desktop" id="nav-links-desktop" aria-label="主导航">
       <a href="#map" data-link="map">乡村地图</a>
       <a href="#villages" data-link="villages">乡村名片墙</a>
       <a href="#routes" data-link="routes">精品线路</a>
@@ -34,8 +34,25 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="global-q" type="search" placeholder="搜索乡村" autocomplete="off" aria-label="搜索乡村">
     </div>
+    <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="打开导航菜单">
+      <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
   </div>
 </header>
+
+<!-- ===== 移动端导航抽屉 =====
+     抽屉与遮罩必须位于 <header> 之外：
+     .nav 上有 backdrop-filter，会为 fixed 后代创建包含块，
+     导致抽屉高度被限制为导航栏高度而非整个视口。 -->
+<nav class="nav-drawer" id="nav-links" aria-label="移动端主导航" hidden>
+  <button class="nav-drawer-close" id="nav-drawer-close" type="button" aria-label="关闭导航菜单">✕</button>
+  <a href="#map" data-link="map">乡村地图</a>
+  <a href="#villages" data-link="villages">乡村名片墙</a>
+  <a href="#routes" data-link="routes">精品线路</a>
+  <a href="#local" data-link="local">乡村土著</a>
+  <a href="#about" data-link="about">关于</a>
+</nav>
+<div class="nav-backdrop" id="nav-backdrop" hidden></div>
 
 <main id="main">
 
@@ -209,6 +226,6 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/vendor/echarts.min.js"></script>
-<script src="/app.js?v=39"></script>
+<script src="/app.js?v=40"></script>
 </body>
 </html>

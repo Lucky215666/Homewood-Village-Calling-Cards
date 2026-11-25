@@ -350,6 +350,8 @@ function renderHeroStats() {
   document.getElementById('stat-counties').textContent = s.counties;
   document.getElementById('stat-pois').textContent = s.pois;
   document.getElementById('stat-routes').textContent = s.routes;
+  // 供动效模块（motion.js）读取，用于统计数字滚动计数
+  window.__homeStats = s;
 }
 
 /* ============================================================

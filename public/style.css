@@ -94,12 +94,20 @@ img{max-width:100%}
   background:rgba(10,13,17,.84);
   backdrop-filter:blur(12px);
   border-bottom:1px solid rgba(255,255,255,.12);
+  transition:background .3s ease,box-shadow .3s ease;
+}
+/* 滚动后加深导航底色，视觉上与页面内容分层 */
+.nav.is-scrolled{
+  background:rgba(8,11,15,.95);
+  box-shadow:0 4px 20px rgba(0,0,0,.28);
 }
 .nav-inner{
   max-width:var(--maxw);margin:0 auto;
   display:flex;align-items:center;gap:26px;
   padding:14px 32px;
+  transition:padding .3s ease;
 }
+.nav.is-scrolled .nav-inner{padding-top:9px;padding-bottom:9px}
 .brand{display:flex;align-items:center;gap:11px;flex:0 0 auto;position:relative}
 .brand-flag{
   position:absolute;left:-9px;top:50%;transform:translateY(-50%) skewX(-12deg);
@@ -170,6 +178,12 @@ section{scroll-margin-top:78px}
 .hero::before{
   content:"";position:absolute;inset:0;z-index:-1;
   background:url('../img/bg-scenery.png') center/cover no-repeat;
+  /* Ken Burns：极缓慢的呼吸式缩放，让首屏画面"活着"但几乎察觉不到 */
+  animation:heroBreathe 26s ease-in-out infinite alternate;
+}
+@keyframes heroBreathe{
+  from{transform:scale(1) translate3d(0,0,0)}
+  to{transform:scale(1.07) translate3d(-.6%,-.4%,0)}
 }
 .hero::after{
   content:"";position:absolute;inset:0;z-index:0;
@@ -548,7 +562,8 @@ section{scroll-margin-top:78px}
 
 /* ---------- 真实村貌：名片墙封面 / 详情大图 / 天路 / 画廊 ---------- */
 .vrow.has-img{padding:0;overflow:hidden}
-.vrow-cover{height:158px;background-size:cover;background-position:center;background-color:var(--green-soft);border-bottom:1px solid var(--line)}
+.vrow-cover{height:158px;background-size:cover;background-position:center;background-color:var(--green-soft);border-bottom:1px solid var(--line);
+  transform-origin:center center;will-change:transform}
 .vrow.has-img .vrow-title,.vrow.has-img .vrow-tag,.vrow.has-img .tags,.vrow.has-img .vrow-foot{margin-left:22px;margin-right:22px}
 .vrow.has-img .vrow-title{margin-top:18px}
 .vrow.has-img .vrow-foot{margin-bottom:18px}
@@ -934,5 +949,19 @@ body.nav-open{overflow:hidden}
   .nav-toggle{display:none}
   .nav-drawer{display:none !important}
   .nav-backdrop{display:none !important}
+}
+
+/* ============================================================
+   动效支撑样式（配合 public/motion.js 的 GSAP 动效）
+   ============================================================ */
+
+/* 可缩放的封面/配图：需要裁切边界，避免放大后溢出卡片 */
+.vrow-cover{overflow:hidden}
+.rc-media{overflow:hidden;transform-origin:center center;will-change:transform}
+.featured-img{overflow:hidden;transform-origin:center center;will-change:transform}
+
+/* 首屏背景缓慢呼吸（Ken Burns） */
+@media (prefers-reduced-motion: reduce){
+  .hero::before{animation:none}
 }
 

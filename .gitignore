@@ -1,0 +1,32 @@
+# 依赖
+node_modules/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-error.log*
+logs/
+
+# 环境变量与密钥（切勿提交）
+.env
+.env.*
+*.local
+
+# 操作系统
+.DS_Store
+.DS_Store?
+Thumbs.db
+desktop.ini
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 构建 / 缓存
+.cache/
+dist/
+build/
+coverage/

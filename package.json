@@ -1,0 +1,14 @@
+{
+  "name": "homewood",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Homewood · 旧林游乡村名片（只读展示版）",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

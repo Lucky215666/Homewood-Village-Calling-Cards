@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#38523F">
+<title>旧林游 · 乡村名片 —— 村村有名片，千村千样</title>
+<meta name="description" content="旧林游·乡村名片展示平台。每一个乡村都有一张属于自己的数字名片，把村情简介、建村历史、民俗文化、乡村好物、景点去处与精品线路搬到线上，做成一张可以被人看见、被人转发的数字名片。">
+<link rel="stylesheet" href="/style.css?v=39">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<!-- 全站背景蒙版：极淡照片纹理 + 暖色面纱（半透明分区之下隐约可见） -->
+<div class="bg-photo" aria-hidden="true"></div>
+<div class="bg-veil" aria-hidden="true"></div>
+
+<!-- ===== 顶部导航 ===== -->
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#home">
+      <img class="brand-logo" src="/img/logo.png" alt="旧林游 · 乡村名片">
+      <span class="brand-text">乡村名片</span>
+    </a>
+    <nav class="nav-links" aria-label="主导航">
+      <a href="#map" data-link="map">乡村地图</a>
+      <a href="#villages" data-link="villages">乡村名片墙</a>
+      <a href="#routes" data-link="routes">精品线路</a>
+      <a href="#local" data-link="local">乡村土著</a>
+      <a href="#about" data-link="about">关于</a>
+    </nav>
+    <div class="nav-search">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="global-q" type="search" placeholder="搜索乡村" autocomplete="off" aria-label="搜索乡村">
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="home">
+    <div class="hero-inner">
+      <div class="hero-lead">
+        <p class="kicker">JIULINYOU · RURAL NAME CARD</p>
+        <h1 class="hero-title">村村有名片，<br>千村千样。</h1>
+        <p class="hero-slogan">创新乡村旅游<b class="hl">兴模式</b>，建设乡村名片<b class="hl">新工具</b></p>
+        <p class="hero-sub">旧林游，把乡村的村情简介、建村历史、民俗文化、乡村好物、景点去处与精品线路搬到线上，做成一张能被看见、被转发的<b class="hl">数字名片</b>——你也可以用它记录家乡、点亮属于自己的乡村名片。</p>
+      </div>
+      <div class="hero-stats" id="hero-stats">
+        <div class="stat"><b id="stat-villages">—</b><i>已点亮乡村</i></div>
+        <div class="stat"><b id="stat-counties">—</b><i>覆盖区县</i></div>
+        <div class="stat"><b id="stat-pois">—</b><i>收录去处</i></div>
+        <div class="stat"><b id="stat-routes">—</b><i>精品线路</i></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 什么是乡村名片 ===== -->
+  <section class="sec intro" id="intro">
+    <div class="sec-inner">
+      <p class="kicker center">OUR NAME</p>
+      <h2 class="sec-title center">旧林游</h2>
+      <p class="sec-lead center">「旧林游」取自陶渊明那句"羁鸟恋旧林，池鱼思故渊"。我们想为每一个眷恋故土的人，留一处安放乡愁、记录家乡的地方：<b>写下你记忆里的村庄，点亮一张属于你家乡的乡村名片</b>，让那条"故渊"被看见、被转发、被后来的人重新找到。</p>
+      <p class="kicker center">WHAT IS IT</p>
+      <h2 class="sec-title center">什么是乡村名片</h2>
+      <p class="sec-lead center">乡村名片，是一款针对乡村开发的、可个性化设计的乡村对外传播形象数字名片。它把村情简介、建村历史、民俗文化、乡村好物、景点去处与精品线路搬到线上，做成一张<b>可以被人看见、被人补充、被人转发</b>的名片——村村有名片，千村千样，推动乡村优秀文化资源数字化，助力农业、旅游、文化等产业振兴发展。</p>
+    </div>
+  </section>
+
+  <!-- ===== 乡村地图 ===== -->
+  <section class="sec map-sec" id="map">
+    <div class="sec-inner">
+      <p class="kicker">EXPLORE ON THE MAP</p>
+      <h2 class="sec-title">乡村地图</h2>
+      <p class="sec-lead">在地图上点亮每一个乡村。点击光点即可查看该乡村的数字名片。</p>
+      <div id="province-filters"></div>
+      <div id="filters"></div>
+      <div class="strip-wrap">
+        <button class="strip-btn prev" id="strip-prev" type="button" aria-label="向左滚动">‹</button>
+        <div class="mini-strip" id="mini-strip"></div>
+        <button class="strip-btn next" id="strip-next" type="button" aria-label="向右滚动">›</button>
+      </div>
+      <div class="map-wrap">
+        <div id="map-canvas"></div>
+        <div class="map-hint"><span>坐标除注明外为示意位置，仅用于地图展示，不作为导航依据。</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 乡村名片墙 ===== -->
+  <section class="sec wall-sec" id="villages">
+    <div class="sec-inner">
+      <p class="kicker">RURAL NAME CARDS</p>
+      <h2 class="sec-title">乡村名片墙 <span class="sec-more" id="vlist-count"></span></h2>
+      <div id="featured" class="featured-wrap"></div>
+      <div class="vlist" id="vlist"></div>
+    </div>
+  </section>
+
+  <!-- ===== 精品线路 ===== -->
+  <section class="sec routes-sec" id="routes">
+    <div class="sec-inner">
+      <p class="kicker">CURATED ROUTES</p>
+      <h2 class="sec-title">精品线路 <span class="sec-more" id="routes-count"></span></h2>
+      <p class="sec-lead" id="routes-lead"></p>
+      <div id="routes-body"></div>
+    </div>
+  </section>
+
+  <!-- ===== 乡村土著 ===== -->
+  <section class="sec local-sec" id="local">
+    <div class="sec-inner">
+      <p class="kicker">LOCAL COMPANIONS</p>
+      <h2 class="sec-title">乡村土著 · 你本地的"土著朋友"</h2>
+      <p class="sec-lead">「乡村土著」，即我们孵化的<b>乡村振兴经理人</b>——都是土生土长、最懂家乡的本地人。我们把"土著"这条链条加入平台服务：每个乡村都会链接多位本地人伴游，连接"小农民"与"大市场"，解决<b>不知道怎么去、去了怎么玩、如何玩得爽</b>的痛点，让乡村旅游告别走马观花。平台引流是前端，土著伴游服务是后端。</p>
+
+      <div class="tz-slogan">
+        <span class="tz-seal">土著</span>
+        <p>"乡村没土著，乐趣少一半。"<em>游他乡 · 品民俗 · 寻乡味 · 住乡舍</em></p>
+      </div>
+
+      <h3 class="tz-h">土著朋友从哪来</h3>
+      <p class="tz-p">通过各村第一书记、返乡创业青年，借助"六度空间"充分发动和联系群众，把最熟悉本地的人聚拢成核心服务群体。团队对以下四类本地人分类签约：</p>
+      <div class="feat-grid">
+        <div class="feat"><span class="fi g">青</span><div><b>返乡创业青年</b><p>从城市回到家乡，愿意留下，也最懂远道而来的游客想要什么。</p></div></div>
+        <div class="feat"><span class="fi b">书</span><div><b>村中第一书记</b><p>熟悉村情与政策，是链接资源、组织带动群众的关键人。</p></div></div>
+        <div class="feat"><span class="fi o">达</span><div><b>本地达人</b><p>吃住行游样样门儿清的"活地图"，知道哪里最好玩、最值得去。</p></div></div>
+        <div class="feat"><span class="fi p">学</span><div><b>本地大学生</b><p>熟悉网络与新媒体，帮家乡把故事讲给更多人听。</p></div></div>
+      </div>
+
+      <h3 class="tz-h">土著朋友陪你怎么玩</h3>
+      <p class="tz-p">以"当地人反复爱去"为标准，为你严格甄选本地的吃喝玩乐购，一站式解决吃什么、住哪里、玩什么：</p>
+      <div class="tz-cats">
+        <span class="tz-cat">吃 · 乡食</span>
+        <span class="tz-cat">喝 · 乡饮</span>
+        <span class="tz-cat">玩 · 乡旅</span>
+        <span class="tz-cat">乐 · 乡娱</span>
+        <span class="tz-cat">购 · 土特产</span>
+      </div>
+
+      <h3 class="tz-h">旧林游乡村"土著"赋能体系</h3>
+      <p class="tz-p">让每位土著朋友都有一双"慧眼"，能发现当地优质的特色旅游资源。通过统一培训、过程督导、甄选入驻商家，把服务理念与标准传递给每一位"管家"，让用户<b>玩得开心、吃得舒心、睡得安心</b>。</p>
+      <ol class="tz-steps">
+        <li><b>下乡宣讲</b><span>联同乡镇政府发布宣讲信息，总部派人下乡</span></li>
+        <li><b>签约意向</b><span>与本地达人、返乡青年等分类签约</span></li>
+        <li><b>统一培训</b><span>传递服务理念与标准</span></li>
+        <li><b>过程督导</b><span>持续指导，提升服务水平</span></li>
+        <li><b>考核评级</b><span>定期服务水平测试、登记评级</span></li>
+      </ol>
+
+      <p class="tz-value">缘于故乡振兴之梦，起于数字建设乡村。我们培育"新农人"成为"兴农人"，促进各路人才回乡寻梦——留人、留财、留景，筑梦农村的"诗和远方"。</p>
+    </div>
+  </section>
+
+  <!-- ===== 关于 / 数据来源 / FAQ ===== -->
+  <section class="sec about-sec" id="about">
+    <div class="sec-inner">
+      <p class="kicker center">ABOUT & SOURCES</p>
+      <h2 class="sec-title center">关于旧林游</h2>
+      <p class="sec-lead center">旧林游·乡村名片展示平台，是「大国兴策 / 乡遇青春」项目的真实可访问原型：村村有名片，千村千样。本站村庄资料均来自政府官网、地方志、党媒与公开百科，每张名片底部标注了具体来源；村庄坐标除特别注明外，为按所属乡镇方位估算的示意位置。本站为演示环境，不展示任何平台经营业绩数据。</p>
+      <div class="faq-grid" id="faq-list"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== 页脚 ===== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="f-brand">
+      <img class="brand-logo f-logo" src="/img/logo.png" alt="旧林游 · 乡村名片">
+      <b class="f-name">乡村名片</b>
+    </div>
+    <p class="f-tag">村村有名片，千村千样</p>
+    <p class="f-note">© 2026 旧林游 · 乡村名片展示平台 · 内容均来自可核实的公开资料，坐标除注明外为示意位置。</p>
+  </div>
+</footer>
+
+<!-- ===== 名片详情浮层 ===== -->
+<div id="detail" class="detail" aria-hidden="true">
+  <div class="detail-backdrop" data-close></div>
+  <div class="detail-card">
+    <button class="detail-close" data-close type="button" aria-label="关闭">✕</button>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ===== 线路专属详情浮层 ===== -->
+<div id="route-detail" class="detail" aria-hidden="true">
+  <div class="detail-backdrop" data-close></div>
+  <div class="detail-card rd-card">
+    <button class="detail-close" data-close type="button" aria-label="关闭">✕</button>
+    <div class="rd-hero"><div class="rd-hero-cap"><h3 class="rd-title"></h3></div></div>
+    <div class="rd-body">
+      <div class="rd-meta"></div>
+      <p class="rd-sum"></p>
+      <h4 class="rd-h">沿途景观</h4>
+      <div class="rd-gal"></div>
+      <h4 class="rd-h">行程安排</h4>
+      <div class="rd-days"></div>
+      <div class="rd-caveat"></div>
+      <div class="rd-src"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="/vendor/echarts.min.js"></script>
+<script src="/app.js?v=39"></script>
+</body>
+</html>

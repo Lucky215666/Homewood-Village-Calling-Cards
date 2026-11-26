@@ -209,7 +209,12 @@ section{scroll-margin-top:76px}
 }
 /* 首屏背景：absolute 铺满整段 + fixed 让图片按视口绘制（一屏一张图） */
 /* 首屏背景同样走 .sec-bg / .sec-mask 机制，滚动时与各段统一替换 */
-.hero .sec-bg{background-image:url('../img/bg-scenery.png')}
+.hero .sec-bg{
+  background-image:url('../img/bg-scenery.png');
+  /* 首屏只有一屏高，用 scroll 让图片贴合盒子，
+     Ken Burns 的 transform 才能真正缩放图片（fixed attachment 下图片锚定视口，缩放无效） */
+  background-attachment:scroll;
+}
 .hero .sec-mask{
   background:linear-gradient(120deg,rgba(31,44,34,.86) 0%,rgba(47,72,53,.72) 45%,rgba(31,44,34,.82) 100%);
 }
@@ -686,14 +691,15 @@ section{scroll-margin-top:76px}
        <div class="sec-inner">…</div>← 内容（在背景之上滚动）
      </section>
 
-   背景与内容的分工：
-     背景图用 position:fixed 固定在视口上、background-size:cover，
-     无论浏览器怎么缩放，图片始终恰好铺满一屏、比例不变、不会拉伸变形；
-     内容照常在页面上滚动，从这张固定的背景图上掠过。
-     这样每段的背景高度天然统一（一屏），不再随段落长短变化。
+   背景与内容的分工（桌面端）：
+     背景层 absolute 铺满各自段落，图片本身 background-attachment:fixed ——
+     图片按视口尺寸绘制、锚定在窗口上，段落的盒子相当于一个「取景窗口」。
+     滚动时分界线随页面上移：上一张的可见部分向上收走，
+     下一张从底部滑进来 —— 过渡进度完全由滚动位置驱动，可逆、跟手。
+     图片始终按视口尺寸 cover，不随段落高度拉伸。
 
-   内容较长、超过一屏的段落（名片墙、精品线路等），
-   背景保持一屏固定，页面元素在背景上继续往下滚 —— 视觉上是「一张照片 + 往下翻阅」。
+   移动端（≤920px）：iOS 对 fixed attachment 支持差，
+     退回 position:fixed 独立图层 + 按滚动位置切换的淡入淡出（.on）。
 */
 .intro,.map-sec,.wall-sec,.routes-sec,.local-sec,.about-sec{
   position:relative;
@@ -701,24 +707,17 @@ section{scroll-margin-top:76px}
   background-color:transparent;
 }
 .sec-bg,.sec-mask{
-  position:fixed;top:0;left:0;right:0;
-  height:100vh;height:100svh;
+  position:absolute;inset:0;
   pointer-events:none;
-  opacity:0;              /* 默认不可见 */
-  visibility:hidden;
-  /* 段落之间背景的交叉淡入淡出 */
-  transition:opacity 1.1s cubic-bezier(.4,0,.2,1),visibility 0s linear 1.1s;
 }
 .sec-bg{
   z-index:0;
   background-repeat:no-repeat;background-position:center;background-size:cover;
-  /* 淡入时轻微放大后归位，像镜头慢慢推稳 */
-  transform:scale(1.04);
-  transition:opacity 1.1s cubic-bezier(.4,0,.2,1),visibility 0s linear 1.1s,
-             transform 1.6s cubic-bezier(.22,1,.36,1);
+  background-attachment:fixed;   /* 图片锚定视口 → 滚动时随分界线滑动 */
 }
 .sec-mask{
   z-index:1;
+  /* 蒙版随段落盒子走：每段上下边缘压暗，中间留亮 */
   background:linear-gradient(180deg,
     rgba(14,20,16,.90) 0%,
     rgba(14,20,16,.70) 16%,
@@ -726,19 +725,34 @@ section{scroll-margin-top:76px}
     rgba(14,20,16,.70) 84%,
     rgba(14,20,16,.90) 100%);
 }
-/* 只有当前段落范围内的背景才显示：JS 按滚动位置切换 .on
-   淡出用 0s 延迟等淡入结束再隐藏，避免两层同时不可见时闪白。 */
-.sec.on .sec-bg,.sec.on .sec-mask{
-  opacity:1;visibility:visible;
-  transition:opacity 1.1s cubic-bezier(.4,0,.2,1),visibility 0s;
-}
-.sec.on .sec-bg{transform:scale(1)}
 .intro .sec-bg{background-image:url('../img/m-wheat.png')}
 .map-sec .sec-bg{background-image:url('../img/m-valley.png')}
 .wall-sec .sec-bg{background-image:url('../img/m-miao.png')}
 .routes-sec .sec-bg{background-image:url('../img/m-ridge.png')}
 .local-sec .sec-bg{background-image:url('../img/m-folk.png')}
 .about-sec .sec-bg{background-image:url('../img/m-sunset.png')}
+
+/* ---- 移动端降级：固定图层 + 淡入淡出（iOS 的 fixed attachment 不可靠） ---- */
+@media (max-width:920px){
+  .sec-bg,.sec-mask{
+    position:fixed;top:0;left:0;right:0;
+    height:100vh;height:100svh;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .9s ease,visibility 0s linear .9s;
+  }
+  .sec-bg{
+    background-attachment:scroll;
+    transform:scale(1.04);
+    transition:opacity .9s ease,visibility 0s linear .9s,
+               transform 1.4s cubic-bezier(.22,1,.36,1);
+  }
+  .sec.on .sec-bg,.sec.on .sec-mask{
+    opacity:1;visibility:visible;
+    transition:opacity .9s ease,visibility 0s;
+  }
+  .sec.on .sec-bg{transform:scale(1)}
+}
 /* 落到背景上的标题/正文转浅色 + 阴影保可读 */
 .intro .kicker,.map-sec .kicker,.wall-sec .kicker,.routes-sec .kicker,.local-sec .kicker,.about-sec .kicker{color:#CFE0C6}
 .intro .sec-title,.map-sec .sec-title,.wall-sec .sec-title,.routes-sec .sec-title,.local-sec .sec-title,.about-sec .sec-title{color:#F6F3E9;text-shadow:0 1px 4px rgba(0,0,0,.55)}
@@ -752,15 +766,7 @@ section{scroll-margin-top:76px}
 .local-sec .tz-p b{color:#F4D98A}
 .routes-sec .group-title{color:#F6F3E9;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 .routes-sec .group-title.official,.routes-sec .group-title.team{color:#F4D98A}
-/* 移动端：段落背景改由 ::before 的 background-size:cover 铺满，
-   不再依赖 background-attachment:fixed（iOS 对其支持不佳）。 */
-@media (max-width:920px){
-  .intro::before,.map-sec::before,.wall-sec::before,
-  .routes-sec::before,.local-sec::before,.about-sec::before{
-    background-attachment:scroll;
-  }
-  .hero::before{background-attachment:scroll}
-}
+/* 移动端的背景降级规则已并入上方「移动端降级」段落（.sec-bg fixed + 淡入淡出） */
 
 /* ============ V8：线路卡片配图 + 线路专属详情浮层 ============ */
 /* 线路卡：左文右图。用 minmax(0,1fr) 保证窄屏时文字列不会塌成竖排，

@@ -74,11 +74,14 @@ img{max-width:100%}
   }
 }
 
-/* ---------- 全站背景蒙版（方案B：极淡照片纹理 + 暖色面纱） ---------- */
-.bg-photo{position:fixed;inset:0;z-index:-2;
-  background:url('../img/bg-scenery.png') center/cover no-repeat;opacity:.12}
-.bg-veil{position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(rgba(243,238,225,.82),rgba(243,238,225,.90))}
+/* ---------- 全站背景（各段已有独立配图，这里只保留极淡的底纹） ---------- */
+/* 之前这层是 82%~90% 不透明的暖色面纱，用来盖住「所有段落共用一张图」的旧结构。
+   现在每一段都有自己的背景图，这层若还保持高不透明度会把配图整个洗白，
+   所以改成极淡的纹理层，只在背景图缝隙处透出一点质感。 */
+.bg-photo{position:fixed;inset:0;z-index:-3;
+  background:url('../img/bg-scenery.png') center/cover no-repeat;opacity:.10}
+.bg-veil{position:fixed;inset:0;z-index:-3;
+  background:linear-gradient(rgba(243,238,225,.30),rgba(243,238,225,.42))}
 
 .kicker{
   font-family:var(--serif);
@@ -164,21 +167,29 @@ img{max-width:100%}
 main{display:block}
 /* 导航已改为 position:fixed，内容整体下移让出导航高度 */
 main{padding-top:64px}
-/* 锚点跳转时避开固定导航 */
-section{scroll-margin-top:84px}
+/* 锚点跳转时避开固定导航：只留导航自身的高度 + 一点余量，
+   不把分隔条算进去 —— 跳过去后应当直接看到标题，而不是一条过渡带。 */
+section{scroll-margin-top:76px}
 .sec-inner{max-width:var(--maxw);margin:0 auto;padding:84px 32px}
 
 /* ---------- 分区视觉分隔 ----------
    每一段都有独立的背景图，若无分隔会糊成一片。
-   分隔条用独立元素实现（section 的 ::before/::after 已被背景层占用）：
-   上方一段压暗过渡带 → 中央印章 → 下方一段压暗过渡带，
-   让相邻两段的明暗交界清晰可辨。 */
+
+   实现要点：分隔条绝对定位在 section 的上边界（不占据文档流高度），
+   所以锚点跳转时不会把一条过渡带留在导航下面。
+   section 的 ::before/::after 已被背景层与蒙版层占用，
+   因此这里用独立的 .sec-divider 元素承担。 */
 .sec-divider{
-  position:relative;height:64px;z-index:2;
-  margin:-32px 0;
+  position:absolute;left:0;right:0;top:0;height:64px;z-index:3;
+  /* 分隔条整体上移到段落边界之外（骑在上一段与本段的分界线上）。
+     锚点跳转把段落顶到导航下方时，分隔条完全被固定导航盖住，
+     标题上方不会残留一条突兀的过渡带。 */
+  transform:translateY(-100%);
   display:flex;align-items:center;justify-content:center;
   pointer-events:none;
 }
+/* 分隔条所在的 section 需要成为定位参照 */
+.sec-divider-host{position:relative}
 /* 上下过渡带：把分隔处压暗，形成明确的分段 */
 .sec-divider::before{
   content:"";position:absolute;inset:0;
@@ -212,13 +223,15 @@ section{scroll-margin-top:84px}
 
 /* ---------- hero ---------- */
 .hero{
-  position:relative;isolation:isolate;overflow:hidden;
+  position:relative;overflow:hidden;
   background:none;
   border-bottom:1px solid var(--line);
 }
+/* 首屏背景：absolute 铺满整段 + fixed 让图片按视口绘制（一屏一张图） */
 .hero::before{
-  content:"";position:absolute;inset:0;z-index:-1;
+  content:"";position:absolute;inset:0;z-index:0;
   background:url('../img/bg-scenery.png') center/cover no-repeat;
+  background-attachment:fixed;
   /* Ken Burns：极缓慢的呼吸式缩放，让首屏画面"活着"但几乎察觉不到 */
   animation:heroBreathe 26s ease-in-out infinite alternate;
 }
@@ -227,14 +240,14 @@ section{scroll-margin-top:84px}
   to{transform:scale(1.07) translate3d(-.6%,-.4%,0)}
 }
 .hero::after{
-  content:"";position:absolute;inset:0;z-index:0;
+  content:"";position:absolute;inset:0;z-index:1;
   background:linear-gradient(120deg,rgba(31,44,34,.86) 0%,rgba(47,72,53,.72) 45%,rgba(31,44,34,.82) 100%);
 }
 .hero-inner{
   max-width:var(--maxw);margin:0 auto;
   padding:96px 32px 84px;
   display:grid;grid-template-columns:1.4fr 1fr;gap:56px;align-items:center;
-  position:relative;z-index:1;
+  position:relative;z-index:2;
 }
 .hero .kicker{color:#E4EFDD}
 .hero-title{
@@ -681,43 +694,60 @@ section{scroll-margin-top:84px}
 .error-box{margin-top:16px;padding:18px 20px;border-radius:var(--r-lg);background:#FDECEA;color:#8C2F22;font-size:14px;line-height:1.7}
 .empty{padding:30px 16px;text-align:center;color:var(--muted);font-size:14px;border-radius:var(--r-md);background:var(--field)}
 
-/* ============ V7：每模块各自背景图（铺满整段）+ 分区蒙版 ============ */
+/* ============ V7：每模块各自背景图（始终铺满一屏）+ 分区蒙版 ============ */
 /*
-   背景图不再直接画在 section 上，而是交给 ::before 绝对定位图层：
-   - section 本身只负责排版，高度由内容决定
-   - ::before 用 inset:0 撑满整个 section，配合 background-size:cover
-     保证无论段落多高、视口多宽，背景都完整铺满，不会露白
-   - 蒙版另起一层（::after），负责压暗图片并做出上下深、中间浅的层次
-   这样长段落（如名片墙 3800px 高）也能有完整连贯的背景。
+   背景层改用 section 内的真实子元素（.sec-bg / .sec-mask），
+   不用伪元素 —— 伪元素的 position:sticky 会自建层叠上下文，
+   容易盖住正文或被页面底色遮住，不可靠。
+
+   结构：
+     <section class="sec ...">
+       <div class="sec-bg"></div>    ← 背景图
+       <div class="sec-mask"></div>  ← 蒙版
+       <div class="sec-inner">…</div>← 内容
+     </section>
+
+   铺满整屏的做法：
+     背景层用 position:absolute; inset:0 覆盖整段（保证任何时候都不露缝），
+     图片本身用 background-attachment:fixed —— 这样图片始终按视口尺寸绘制、
+     固定在窗口上，等效于「一张背景正好占满一屏」。
+     浏览器缩放时视口尺寸变化，图片随之重新适配，永远是一屏一张图。
 */
-.hero::before{background-attachment:fixed}
 .intro,.map-sec,.wall-sec,.routes-sec,.local-sec,.about-sec{
-  position:relative;isolation:isolate;
+  position:relative;
   border-top:none;border-bottom:none;
-  /* 段落底色：图片层的兜底色，避免加载瞬间闪白 */
-  background-color:var(--bg);
+  background-color:transparent;
 }
-.intro::before,.map-sec::before,.wall-sec::before,.routes-sec::before,.local-sec::before,.about-sec::before{
-  content:"";position:absolute;inset:0;z-index:-2;
+.sec-bg,.sec-mask{
+  position:absolute;inset:0;
+  pointer-events:none;
+}
+.sec-bg{
+  z-index:0;
   background-repeat:no-repeat;background-position:center;background-size:cover;
+  background-attachment:fixed;
 }
-.intro::before{background-image:url('../img/m-wheat.png')}
-.map-sec::before{background-image:url('../img/m-valley.png')}
-.wall-sec::before{background-image:url('../img/m-miao.png')}
-.routes-sec::before{background-image:url('../img/m-ridge.png')}
-.local-sec::before{background-image:url('../img/m-folk.png')}
-.about-sec::before{background-image:url('../img/m-sunset.png')}
-/* 蒙版层：上下压得更暗做分区，中间留亮保证可读 */
-.intro::after,.map-sec::after,.wall-sec::after,.routes-sec::after,.local-sec::after,.about-sec::after{
-  content:"";position:absolute;inset:0;z-index:-1;
+.sec-mask{
+  z-index:1;
+  /* 蒙版同样按视口绘制：压暗层次始终跟着窗口，不会因段落很长而整片发黑 */
   background:linear-gradient(180deg,
-    rgba(14,20,16,.94) 0%,
-    rgba(14,20,16,.72) 14%,
-    rgba(14,20,16,.62) 50%,
-    rgba(14,20,16,.72) 86%,
-    rgba(14,20,16,.94) 100%);
+    rgba(14,20,16,.92) 0%,
+    rgba(14,20,16,.72) 15%,
+    rgba(14,20,16,.60) 50%,
+    rgba(14,20,16,.72) 85%,
+    rgba(14,20,16,.92) 100%);
+  background-attachment:fixed;
+  background-size:100% 100vh;
+  background-repeat:no-repeat;
 }
-.sec-inner{position:relative;z-index:1;padding:132px 32px}
+.intro .sec-bg{background-image:url('../img/m-wheat.png')}
+.map-sec .sec-bg{background-image:url('../img/m-valley.png')}
+.wall-sec .sec-bg{background-image:url('../img/m-miao.png')}
+.routes-sec .sec-bg{background-image:url('../img/m-ridge.png')}
+.local-sec .sec-bg{background-image:url('../img/m-folk.png')}
+.about-sec .sec-bg{background-image:url('../img/m-sunset.png')}
+/* 内容层在蒙版之上 */
+.sec-inner{position:relative;z-index:2;padding:132px 32px}
 /* 落到背景上的标题/正文转浅色 + 阴影保可读 */
 .intro .kicker,.map-sec .kicker,.wall-sec .kicker,.routes-sec .kicker,.local-sec .kicker,.about-sec .kicker{color:#CFE0C6}
 .intro .sec-title,.map-sec .sec-title,.wall-sec .sec-title,.routes-sec .sec-title,.local-sec .sec-title,.about-sec .sec-title{color:#F6F3E9;text-shadow:0 1px 4px rgba(0,0,0,.55)}

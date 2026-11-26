@@ -444,6 +444,46 @@ function attachNavMotion() {
 }
 
 /* ============================================================
+    11. 段落背景切换
+    ============================================================ */
+
+/**
+ * 每个段落的背景图是 position:fixed 的独立图层，
+ * 同一时刻只能显示一张。这里按滚动位置判断「当前正处于哪一段」，
+ * 给该段加上 .on，让它的背景显示、其余隐藏。
+ *
+ * 判定方式：视口中心落在哪一段的范围内。
+ * 这样滚动时背景会干净地跟着段落切换，不会出现两张图叠在一起。
+ */
+function attachSectionBackdrop() {
+  const sections = $$('.sec');
+  if (!sections.length) return;
+
+  let current = null;
+
+  const update = () => {
+    const mid = window.scrollY + window.innerHeight / 2;
+    let active = null;
+    for (const sec of sections) {
+      const top = sec.offsetTop;
+      const bottom = top + sec.offsetHeight;
+      if (mid >= top && mid < bottom) { active = sec; break; }
+    }
+    if (active === current) return;
+    if (current) current.classList.remove('on');
+    if (active) active.classList.add('on');
+    current = active;
+  };
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  // 内容异步渲染会改变段落高度，重算一次
+  setTimeout(update, 400);
+  setTimeout(update, 1200);
+}
+
+/* ============================================================
     启动
    ============================================================ */
 
@@ -460,6 +500,7 @@ function initMotion() {
   attachButtonMotion();
   attachDetailMotion();
   attachNavMotion();
+  attachSectionBackdrop();
 
   // 页面内容是异步渲染的（接口取数 + ECharts 初始化），布局高度会持续变化。
   // ScrollTrigger 的触发位置是基于测量值算出来的，所以必须在内容稳定后

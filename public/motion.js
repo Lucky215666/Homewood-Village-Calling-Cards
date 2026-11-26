@@ -172,13 +172,29 @@ function revealOnScroll(container, selector, vars) {
 
     fresh.filter((el) => !inView.includes(el)).forEach((el) => {
       pending.add(el);
+      /* 页尾内容的触发线可能落在最大滚动范围之外 ——
+         无论怎么滚都到不了，触发器永远不会开火，元素会一直透明。
+         这类元素直接立即显示。 */
+      // 触发系数从 vars.start（如 'top 92%'）里取，保持与触发器一致
+      const pct = /([\d.]+)\s*%/.exec(vars.start);
+      const factor = pct ? parseFloat(pct[1]) / 100 : 0.88;
+      // 注意：先测量再设 y 位移，否则 transform 会污染 getBoundingClientRect
+      const docTop = el.getBoundingClientRect().top + window.scrollY;
+      const startLine = docTop - window.innerHeight * factor;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const unreachable = startLine >= maxScroll - 4;
       gsap.set(el, { opacity: 0, y: vars.y });
-      ScrollTrigger.create({
-        trigger: el,
-        start: vars.start,
-        once: true,
-        onEnter: () => { pending.delete(el); play([el]); }
-      });
+      if (unreachable) {
+        pending.delete(el);
+        play([el]);
+      } else {
+        ScrollTrigger.create({
+          trigger: el,
+          start: vars.start,
+          once: true,
+          onEnter: () => { pending.delete(el); play([el]); }
+        });
+      }
     });
   };
 
@@ -449,11 +465,12 @@ function attachNavMotion() {
 
 /**
  * 每个段落的背景图是 position:fixed 的独立图层，
- * 同一时刻只能显示一张。这里按滚动位置判断「当前正处于哪一段」，
- * 给该段加上 .on，让它的背景显示、其余隐藏。
+ * 同一时刻只有一段的背景是「完全显示」的，其余淡出。
+ * 这里按滚动位置判断当前处于哪一段，给它加上 .on。
  *
- * 判定方式：视口中心落在哪一段的范围内。
- * 这样滚动时背景会干净地跟着段落切换，不会出现两张图叠在一起。
+ * 切换时机：以视口中心所在段落为准，但提前一点（半个视口高度的一半），
+ * 让背景在用户看到新段落标题之前就已经开始淡入，
+ * 观感上是「背景跟着内容走」，而不是「内容都滚过去了背景才换」。
  */
 function attachSectionBackdrop() {
   const sections = $$('.sec');
@@ -462,12 +479,13 @@ function attachSectionBackdrop() {
   let current = null;
 
   const update = () => {
-    const mid = window.scrollY + window.innerHeight / 2;
+    // 判定点：视口中心再往上偏一点，让切换早于标题进入视野
+    const probe = window.scrollY + window.innerHeight * 0.38;
     let active = null;
     for (const sec of sections) {
       const top = sec.offsetTop;
       const bottom = top + sec.offsetHeight;
-      if (mid >= top && mid < bottom) { active = sec; break; }
+      if (probe >= top && probe < bottom) { active = sec; break; }
     }
     if (active === current) return;
     if (current) current.classList.remove('on');

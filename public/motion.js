@@ -460,45 +460,126 @@ function attachNavMotion() {
 }
 
 /* ============================================================
-    11. 段落背景切换
+    11. 段落背景切换（进度绑定滚动的模糊溶解）
     ============================================================ */
 
 /**
- * 每个段落的背景图是 position:fixed 的独立图层，
- * 同一时刻只有一段的背景是「完全显示」的，其余淡出。
- * 这里按滚动位置判断当前处于哪一段，给它加上 .on。
+ * 每个段落的背景是 position:fixed 的独立图层。
+ * 过渡进度不走时间线，而是由滚动位置直接换算（scrub）：
  *
- * 切换时机：以视口中心所在段落为准，但提前一点（半个视口高度的一半），
- * 让背景在用户看到新段落标题之前就已经开始淡入，
- * 观感上是「背景跟着内容走」，而不是「内容都滚过去了背景才换」。
+ *   段落分界线（下一段的顶边）在视口里从 66% 高度上移到 20% 高度
+ *   的这段路程，就是过渡区间 —— 进度 p 从 0 走到 1。
+ *
+ *   出场层：opacity 1→0，blur 0→最大值（逐渐失焦）
+ *   入场层：opacity 0→1，blur 最大值→0（逐渐对焦）
+ *
+ * 滚得快就切得快，滚得慢就切得慢，停在半路就停住 —— 过渡与手势 1:1。
+ * 中段用 smoothstep 缓一下，起止两端更柔。
  */
 function attachSectionBackdrop() {
   const sections = $$('.sec');
   if (!sections.length) return;
 
-  let current = null;
+  const layers = sections.map((sec) => ({
+    sec,
+    bg: sec.querySelector('.sec-bg'),
+    mask: sec.querySelector('.sec-mask')
+  })).filter((l) => l.bg);
 
-  const update = () => {
-    // 判定点：视口中心再往上偏一点，让切换早于标题进入视野
-    const probe = window.scrollY + window.innerHeight * 0.38;
-    let active = null;
-    for (const sec of sections) {
-      const top = sec.offsetTop;
-      const bottom = top + sec.offsetHeight;
-      if (probe >= top && probe < bottom) { active = sec; break; }
+  if (layers.length < 2) return;
+
+  const isMobile = () => window.matchMedia('(max-width: 920px)').matches;
+  const maxBlur = () => (isMobile() ? 10 : 16);
+
+  // 段落顶缓存：异步渲染会改变高度，resize/延时后失效重算
+  let tops = null;
+  const invalidate = () => { tops = null; };
+
+  const smoothstep = (p) => p * p * (3 - 2 * p);
+
+  const apply = () => {
+    if (!tops) tops = layers.map((l) => l.sec.offsetTop);
+    const vh = window.innerHeight;
+    const scrollY = window.scrollY;
+    const mb = maxBlur();
+
+    // 找当前生效的分界。分界的视口位置 b 随 i 递增：
+    //   b > zoneA  → 还没到这条分界的区间，后面的更远，break
+    //   zoneB< b ≤ zoneA → 正处在这条分界的过渡区间，取它的进度
+    //   b ≤ zoneB  → 这条已完全划过，继续看下一条
+    let inIdx = 0, p = 0; // 默认第一段完全可见
+    for (let i = 1; i < layers.length; i++) {
+      const b = tops[i] - scrollY;               // 分界线的视口位置
+      const outH = tops[i] - tops[i - 1];
+      // 区间起点不能高于出场段自身的高度，否则在段内就开始虚化
+      const zoneA = Math.min(vh * 0.66, outH - 60);
+      if (b > zoneA) break;
+      const zoneB = vh * 0.20;
+      p = Math.min(1, Math.max(0, (zoneA - b) / Math.max(1, zoneA - zoneB)));
+      inIdx = i;
+      if (b <= zoneB) continue; // 已划过，看下一条
+      break;                    // 正在过渡区间内
     }
-    if (active === current) return;
-    if (current) current.classList.remove('on');
-    if (active) active.classList.add('on');
-    current = active;
+
+    const pe = smoothstep(p); // 起止两端放缓
+    layers.forEach((l, idx) => {
+      let op = 0, blur = mb;
+      if (inIdx === 0) {
+        if (idx === 0) { op = 1; blur = 0; }
+      } else if (idx === inIdx - 1) {
+        op = 1 - pe; blur = mb * pe;          // 出场：逐渐失焦
+      } else if (idx === inIdx) {
+        op = pe; blur = mb * (1 - pe);        // 入场：逐渐对焦
+      }
+
+      const vis = op > 0.001;
+      l.bg.style.opacity = op.toFixed(3);
+      l.bg.style.filter = blur < 0.05 ? 'none' : `blur(${blur.toFixed(2)}px)`;
+      l.bg.style.visibility = vis ? 'visible' : 'hidden';
+      if (l.mask) {
+        l.mask.style.opacity = op.toFixed(3);
+        l.mask.style.visibility = vis ? 'visible' : 'hidden';
+      }
+    });
   };
 
-  update();
-  window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
-  // 内容异步渲染会改变段落高度，重算一次
-  setTimeout(update, 400);
-  setTimeout(update, 1200);
+  // 减少动态效果：不做虚化，按位置硬切
+  if (REDUCED) {
+    const update = () => {
+      if (!tops) tops = layers.map((l) => l.sec.offsetTop);
+      const probe = window.scrollY + window.innerHeight * 0.5;
+      let active = 0;
+      for (let i = 0; i < layers.length; i++) {
+        if (probe >= tops[i]) active = i;
+      }
+      layers.forEach((l, idx) => {
+        const on = idx === active;
+        l.bg.style.opacity = on ? '1' : '0';
+        l.bg.style.filter = 'none';
+        l.bg.style.visibility = on ? 'visible' : 'hidden';
+        if (l.mask) {
+          l.mask.style.opacity = on ? '1' : '0';
+          l.mask.style.visibility = on ? 'visible' : 'hidden';
+        }
+      });
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', () => { invalidate(); update(); });
+    setTimeout(() => { invalidate(); update(); }, 600);
+    setTimeout(() => { invalidate(); update(); }, 1500);
+    return;
+  }
+
+  apply();
+  window.addEventListener('scroll', apply, { passive: true });
+  window.addEventListener('resize', () => { invalidate(); apply(); });
+  // 内容异步渲染会改变段落高度，重算分界位置
+  setTimeout(() => { invalidate(); apply(); }, 500);
+  setTimeout(() => { invalidate(); apply(); }, 1500);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { invalidate(); apply(); }).catch(() => {});
+  }
 }
 
 /* ============================================================

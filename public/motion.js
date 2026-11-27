@@ -542,6 +542,12 @@ function attachSectionBackdrop() {
     }
     p = Math.min(1, Math.max(0, p));
 
+    // 滚到页面最底时，最后一处切换直接判为完成：
+    // 此时页面无法再滚动，若仍停留在过渡中途，
+    // 会在导航下方留一条上一段背景的残带。
+    const maxScroll = document.documentElement.scrollHeight - vh;
+    if (y >= maxScroll - 2 && idx === n - 1) p = 1;
+
     if (REDUCED) {
       // 减少动态效果：不做擦除过渡，直接显示当前段
       layers.forEach((l, i) => paint(l, i === idx ? FULL : HIDDEN));
@@ -567,7 +573,10 @@ function attachSectionBackdrop() {
     // 分界线：两端淡入淡出，中段清晰
     const boundary = (1 - p) * vh;
     const edge = Math.min(p, 1 - p);
-    const lineOp = edge < 0.03 ? 0 : Math.min(1, edge / 0.10);
+    let lineOp = edge < 0.03 ? 0 : Math.min(1, edge / 0.10);
+    // 线落到固定导航背后（含少量余量）时直接隐去，
+    // 避免那一小段在导航半透明材质下透出来
+    if (boundary <= navHeight() + 6) lineOp = 0;
     line.style.transform = 'translate3d(0,' + boundary.toFixed(2) + 'px,0)';
     line.style.opacity = lineOp.toFixed(3);
   };
@@ -578,10 +587,9 @@ function attachSectionBackdrop() {
      这里反过来算：先定分界线要落在屏幕哪个高度，
      再倒推需要滚到哪 —— 于是每段的落点都统一，
      分界线稳定露在导航下方，正文落在分界线再往下一点。 */
-  // 分界线只露在导航下面一点点；正文紧随其后。
-  const LINE_BELOW_NAV = 18; // 分界线距导航下沿的距离（px）
-  const CONTENT_GAP = 20;    // 正文（kicker）距分界线的最小距离
-  const PAD_TOP = 64;        // .sec-inner 的顶部内边距，正文距段落顶边的距离
+  // 跳转后分界线要「看不见」：把它推到固定导航背后（或被导航盖住），
+  // 此时切换已完成，屏幕上是干净的新背景，正文刚好露在导航下方。
+  const CONTENT_BELOW_NAV = 12; // 正文距导航下沿的距离（px）
 
   const navHeight = () => {
     const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
@@ -596,17 +604,18 @@ function attachSectionBackdrop() {
     const start = Math.max(0, end - vh, t[idx - 1]);
     const w = Math.max(1, end - start);
 
-    // 分界线屏幕位置 L 与滚动位置的关系：L = vh * (end - scrollY) / w
-    // 正文位置 = 段落顶 - 滚动位置 + PAD_TOP = w*(1 - L/vh)... 反解得 L：
-    //   正文 - L = L*(w/vh - 1) + PAD_TOP
-    // 长段落（w≥vh）正文天然在分界线下方 PAD_TOP；短段落需把线抬高一些
-    let L = navHeight() + LINE_BELOW_NAV;
-    if (w < vh) {
-      const need = (PAD_TOP - CONTENT_GAP) / (1 - w / vh);
-      L = Math.min(L, need);
-    }
-    L = Math.max(L, navHeight() + 10);      // 至少露在导航下方
-    L = Math.min(L, vh * 0.5);              // 不要高到屏幕中部以上
+    // 设分界线屏幕位置为 L，则：
+    //   段落顶 = w*(1 - L/vh)          （窗口长度 w、视口高 vh）
+    //   正文   = 段落顶 + padTop
+    // 要求正文落在导航下方 CONTENT_BELOW_NAV 处：
+    //   L*(w/vh) + padTop = navH + CONTENT_BELOW_NAV
+    const navH = navHeight();
+    const inner = layers[idx].sec.querySelector('.sec-inner');
+    const padTop = inner ? (parseFloat(getComputedStyle(inner).paddingTop) || 0) : 0;
+
+    const need = navH + CONTENT_BELOW_NAV - padTop; // 分界线需要下移的量
+    let L = need <= 0 ? 0 : (need * vh) / w;        // ≤0 时限可完全在视口上方
+    L = Math.max(0, Math.min(L, vh * 0.5));
 
     const p = Math.max(0, Math.min(1, 1 - L / vh));
     return Math.max(0, Math.round(start + p * w));

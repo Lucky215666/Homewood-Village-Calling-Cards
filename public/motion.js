@@ -572,6 +572,89 @@ function attachSectionBackdrop() {
     line.style.opacity = lineOp.toFixed(3);
   };
 
+  /* ---------- 锚点跳转：落到「分界线下方」 ----------
+     直接 scrollIntoView 只会把段落顶边顶到导航下沿，
+     但分界线的屏幕位置取决于该段过渡窗口的长度（短段落会漂移）。
+     这里反过来算：先定分界线要落在屏幕哪个高度，
+     再倒推需要滚到哪 —— 于是每段的落点都统一，
+     分界线稳定露在导航下方，正文落在分界线再往下一点。 */
+  const LINE_TARGET = 130;   // 分界线的目标屏幕位置（px）
+  const CONTENT_GAP = 28;    // 正文（kicker）距分界线的最小距离
+  const PAD_TOP = 64;        // .sec-inner 的顶部内边距，正文距段落顶边的距离
+
+  const navHeight = () => {
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
+    return Number.isFinite(v) && v > 0 ? v : 64;
+  };
+
+  const scrollTopForSection = (idx) => {
+    if (idx <= 0) return 0;
+    const t = measure();
+    const vh = window.innerHeight;
+    const end = t[idx];
+    const start = Math.max(0, end - vh, t[idx - 1]);
+    const w = Math.max(1, end - start);
+
+    // 分界线屏幕位置 L 与滚动位置的关系：L = vh * (end - scrollY) / w
+    // 正文位置 = 段落顶 - 滚动位置 + PAD_TOP = w*(1 - L/vh)... 反解得 L：
+    //   正文 - L = L*(w/vh - 1) + PAD_TOP
+    // 长段落（w≥vh）正文天然在分界线下方 PAD_TOP；短段落需把线抬高一些
+    let L = LINE_TARGET;
+    if (w < vh) {
+      const need = (PAD_TOP - CONTENT_GAP) / (1 - w / vh);
+      L = Math.min(L, need);
+    }
+    L = Math.max(L, navHeight() + 26);      // 至少露在导航下方
+    L = Math.min(L, vh * 0.5);              // 不要高到屏幕中部以上
+
+    const p = Math.max(0, Math.min(1, 1 - L / vh));
+    return Math.max(0, Math.round(start + p * w));
+  };
+
+  // 拦截站内锚点点击（桌面导航 / 抽屉 / 品牌 logo）
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = (a.getAttribute('href') || '').slice(1);
+    if (!id) return;
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    if (idx < 0) return;                    // 不是段落锚点（如 #main）→ 交给浏览器
+    e.preventDefault();
+    const top = scrollTopForSection(idx);
+    window.scrollTo({ top, behavior: REDUCED ? 'auto' : 'smooth' });
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+  });
+
+  /* 直接打开带锚点的链接（如 /#routes）时，浏览器原生跳转只按 scroll-margin 计算，
+     落点和点击导航不一致。这里用同一套规则校正一次；
+     若用户已经开始自己滚动，就不再干预。 */
+  let userScrolled = false;
+  ['wheel', 'touchmove', 'keydown'].forEach((ev) =>
+    window.addEventListener(ev, () => { userScrolled = true; }, { passive: true, once: true })
+  );
+
+  const settleHash = () => {
+    if (userScrolled) return;
+    const id = (location.hash || '').slice(1);
+    if (!id) return;
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    if (idx < 0) return;
+    const top = scrollTopForSection(idx);
+    if (Math.abs(window.scrollY - top) > 2) window.scrollTo({ top, behavior: 'auto' });
+  };
+
+  if (location.hash) {
+    settleHash();
+    setTimeout(() => { invalidate(); settleHash(); }, 400);
+    setTimeout(() => { invalidate(); settleHash(); }, 1200);
+  }
+
+  // 供验证脚本使用
+  window.__scrollTopForSection = (id) => {
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    return idx < 0 ? null : scrollTopForSection(idx);
+  };
+
   let raf = 0;
   const schedule = () => {
     if (raf) return;

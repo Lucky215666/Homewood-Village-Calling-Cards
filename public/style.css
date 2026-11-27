@@ -742,6 +742,12 @@ section{scroll-margin-top:var(--nav-h)}
 
    内容较长、超过一屏的段落（名片墙、精品线路等），
    背景保持一屏固定，页面元素在背景上继续往下滚 —— 视觉上是「一张照片 + 往下翻阅」。
+
+   段落之间的过渡 = 擦除（wipe）：
+     分界线随滚动从视口底部扫到顶部，线以上是上一张背景（逐渐收走）、
+     线以下是下一张背景（逐渐露出），两层都用 clip-path 裁切，边界锐利。
+     进度由滚动位置换算（区间长度按视口高度取），与手势 1:1、可逆；
+     因为背景层尺寸只认视口，改字号/增删元素都不会让背景位移或缩放。
 */
 .intro,.map-sec,.wall-sec,.routes-sec,.local-sec,.about-sec{
   position:relative;
@@ -752,17 +758,13 @@ section{scroll-margin-top:var(--nav-h)}
   position:fixed;top:0;left:0;right:0;
   height:100vh;height:100svh;
   pointer-events:none;
-  /* 初始态：JS（motion.js 的 scrub）会按滚动进度逐帧写内联样式，
-     这里不再放 transition —— 进度绑定滚动，不能有时间线 */
-  opacity:0;
-  visibility:hidden;
+  /* 尺寸只认视口：与段落高度、文字大小、元素增减完全无关。
+     初始裁切为「不可见」，JS 按滚动进度逐帧写入 clip-path。 */
+  clip-path:inset(100% 0 0 0);
 }
 .sec-bg{
   z-index:0;
   background-repeat:no-repeat;background-position:center;background-size:cover;
-  /* 模糊溶解：失焦初值，进度由 JS 控制 */
-  filter:blur(16px);
-  will-change:opacity,filter;
 }
 .sec-mask{
   z-index:1;
@@ -772,6 +774,25 @@ section{scroll-margin-top:var(--nav-h)}
     rgba(14,20,16,.58) 50%,
     rgba(14,20,16,.70) 84%,
     rgba(14,20,16,.90) 100%);
+}
+/* 首屏背景默认可见，避免脚本就绪前出现白闪 */
+.hero .sec-bg,.hero .sec-mask{clip-path:inset(0 0 0 0)}
+
+/* 段落切换的分界线：随滚动从视口底部扫到顶部 */
+.wipe-line{
+  position:fixed;left:0;right:0;top:0;height:2px;
+  z-index:1;                 /* 在背景之上、正文（z-index:2）之下 */
+  pointer-events:none;
+  opacity:0;
+  background:linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.55) 10%,
+    rgba(255,255,255,.92) 50%,
+    rgba(255,255,255,.55) 90%,
+    rgba(255,255,255,0) 100%);
+  box-shadow:0 0 18px rgba(255,255,255,.30),0 0 5px rgba(255,255,255,.45);
+  will-change:transform,opacity;
+  transform:translate3d(0,0,0);
 }
 .intro .sec-bg{background-image:url('../img/m-wheat.png')}
 .map-sec .sec-bg{background-image:url('../img/m-valley.png')}
@@ -792,14 +813,7 @@ section{scroll-margin-top:var(--nav-h)}
 .local-sec .tz-p b{color:#F4D98A}
 .routes-sec .group-title{color:#F6F3E9;text-shadow:0 1px 3px rgba(0,0,0,.5)}
 .routes-sec .group-title.official,.routes-sec .group-title.team{color:#F4D98A}
-/* 移动端模糊溶解降级：虚化半径收小（移动 GPU 弱），
-   并去掉 will-change 常驻提升，节省显存；进度同样由 JS scrub 驱动 */
-@media (max-width:920px){
-  .sec-bg{
-    filter:blur(10px);
-    will-change:auto;
-  }
-}
+
 
 /* ============ V8：线路卡片配图 + 线路专属详情浮层 ============ */
 /* 线路卡：左文右图。用 minmax(0,1fr) 保证窄屏时文字列不会塌成竖排，

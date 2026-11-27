@@ -350,6 +350,8 @@ function renderHeroStats() {
   document.getElementById('stat-counties').textContent = s.counties;
   document.getElementById('stat-pois').textContent = s.pois;
   document.getElementById('stat-routes').textContent = s.routes;
+  // 供动效模块（motion.js）读取，用于统计数字滚动计数
+  window.__homeStats = s;
 }
 
 /* ============================================================
@@ -920,7 +922,8 @@ document.addEventListener('keydown', (e) => {
 const NAV_LINKS = ['map', 'villages', 'routes', 'local', 'about'];
 
 function markActive(link) {
-  document.querySelectorAll('.nav-links a').forEach((a) => {
+  // 桌面横向导航与移动端抽屉两处都要同步高亮
+  document.querySelectorAll('.nav-links-desktop a, .nav-drawer a').forEach((a) => {
     a.classList.toggle('active', a.dataset.link === link);
   });
 }
@@ -949,6 +952,84 @@ function handleHash() {
 window.addEventListener('hashchange', handleHash);
 window.addEventListener('resize', () => {
   Object.keys(state.charts).forEach((k) => { try { state.charts[k].resize(); } catch (e) {} });
+  // 视口变宽时收起移动端菜单，避免残留遮罩
+  if (window.innerWidth > 920 && $navDrawer && $navDrawer.classList.contains('open')) {
+    closeMobileNav(false);
+  }
+});
+
+/* ============================================================
+    移动端导航（抽屉菜单）
+    ============================================================ */
+
+const $navToggle = document.getElementById('nav-toggle');
+const $navDrawer = document.getElementById('nav-links');
+const $navBackdrop = document.getElementById('nav-backdrop');
+const $navDrawerClose = document.getElementById('nav-drawer-close');
+const MOBILE_NAV_BP = 920;
+let closeTimer = null;
+
+function isMobileNav() {
+  return window.innerWidth <= MOBILE_NAV_BP;
+}
+
+function openMobileNav() {
+  if (!$navToggle || !$navDrawer) return;
+  $navDrawer.hidden = false;
+  // 强制一次 reflow，保证从 translateX(100%) 的初值开始过渡
+  void $navDrawer.offsetWidth;
+  $navDrawer.classList.add('open');
+  $navToggle.setAttribute('aria-expanded', 'true');
+  $navToggle.setAttribute('aria-label', '关闭导航菜单');
+  document.body.classList.add('nav-open');
+  if ($navBackdrop) $navBackdrop.hidden = false;
+  // 焦点移入菜单，便于键盘与读屏用户继续操作
+  const first = $navDrawer.querySelector('a');
+  if (first) first.focus();
+}
+
+function closeMobileNav(returnFocus) {
+  if (!$navToggle || !$navDrawer) return;
+  $navDrawer.classList.remove('open');
+  $navToggle.setAttribute('aria-expanded', 'false');
+  $navToggle.setAttribute('aria-label', '打开导航菜单');
+  document.body.classList.remove('nav-open');
+  if ($navBackdrop) $navBackdrop.hidden = true;
+  // 等滑出动画结束再隐藏，避免菜单瞬间消失
+  if (returnFocus && $navToggle) $navToggle.focus();
+  clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => {
+    if (!$navDrawer.classList.contains('open')) $navDrawer.hidden = true;
+  }, 300);
+}
+
+function toggleMobileNav() {
+  if (!$navDrawer) return;
+  if ($navDrawer.classList.contains('open')) closeMobileNav(false);
+  else openMobileNav();
+}
+
+if ($navToggle) {
+  $navToggle.addEventListener('click', toggleMobileNav);
+}
+if ($navDrawerClose) {
+  $navDrawerClose.addEventListener('click', () => closeMobileNav(true));
+}
+if ($navBackdrop) {
+  $navBackdrop.addEventListener('click', () => closeMobileNav(false));
+}
+if ($navDrawer) {
+  // 点击菜单项后收起，并交还焦点给触发按钮
+  $navDrawer.addEventListener('click', (e) => {
+    if (e.target.closest('a') && isMobileNav()) {
+      closeMobileNav(false);
+    }
+  });
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $navDrawer && $navDrawer.classList.contains('open')) {
+    closeMobileNav(true);
+  }
 });
 
 /* ============================================================

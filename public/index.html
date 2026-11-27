@@ -2,11 +2,16 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#38523F">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E13">
 <title>旧林游 · 乡村名片 —— 村村有名片，千村千样</title>
 <meta name="description" content="旧林游·乡村名片展示平台。每一个乡村都有一张属于自己的数字名片，把村情简介、建村历史、民俗文化、乡村好物、景点去处与精品线路搬到线上，做成一张可以被人看见、被人转发的数字名片。">
-<link rel="stylesheet" href="/style.css?v=39">
+<!-- 站点图标：新版金色「旧林游」标识 -->
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/img/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/style.css?v=50">
 </head>
 <body>
 
@@ -20,10 +25,10 @@
 <header class="nav" id="nav">
   <div class="nav-inner">
     <a class="brand" href="#home">
-      <img class="brand-logo" src="/img/logo.png" alt="旧林游 · 乡村名片">
-      <span class="brand-text">乡村名片</span>
+      <img class="brand-logo" src="/img/logo.png?v=2" alt="">
+      <span class="brand-text">旧林游</span>
     </a>
-    <nav class="nav-links" aria-label="主导航">
+    <nav class="nav-links nav-links-desktop" id="nav-links-desktop" aria-label="主导航">
       <a href="#map" data-link="map">乡村地图</a>
       <a href="#villages" data-link="villages">乡村名片墙</a>
       <a href="#routes" data-link="routes">精品线路</a>
@@ -34,13 +39,32 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="global-q" type="search" placeholder="搜索乡村" autocomplete="off" aria-label="搜索乡村">
     </div>
+    <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="打开导航菜单">
+      <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
   </div>
 </header>
+
+<!-- ===== 移动端导航抽屉 =====
+     抽屉与遮罩必须位于 <header> 之外：
+     .nav 上有 backdrop-filter，会为 fixed 后代创建包含块，
+     导致抽屉高度被限制为导航栏高度而非整个视口。 -->
+<nav class="nav-drawer" id="nav-links" aria-label="移动端主导航" hidden>
+  <button class="nav-drawer-close" id="nav-drawer-close" type="button" aria-label="关闭导航菜单">✕</button>
+  <a href="#map" data-link="map">乡村地图</a>
+  <a href="#villages" data-link="villages">乡村名片墙</a>
+  <a href="#routes" data-link="routes">精品线路</a>
+  <a href="#local" data-link="local">乡村土著</a>
+  <a href="#about" data-link="about">关于</a>
+</nav>
+<div class="nav-backdrop" id="nav-backdrop" hidden></div>
 
 <main id="main">
 
   <!-- ===== Hero ===== -->
-  <section class="hero" id="home">
+  <section class="hero sec" id="home">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="hero-inner">
       <div class="hero-lead">
         <p class="kicker">JIULINYOU · RURAL NAME CARD</p>
@@ -59,6 +83,8 @@
 
   <!-- ===== 什么是乡村名片 ===== -->
   <section class="sec intro" id="intro">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker center">OUR NAME</p>
       <h2 class="sec-title center">旧林游</h2>
@@ -71,6 +97,8 @@
 
   <!-- ===== 乡村地图 ===== -->
   <section class="sec map-sec" id="map">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker">EXPLORE ON THE MAP</p>
       <h2 class="sec-title">乡村地图</h2>
@@ -91,6 +119,8 @@
 
   <!-- ===== 乡村名片墙 ===== -->
   <section class="sec wall-sec" id="villages">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker">RURAL NAME CARDS</p>
       <h2 class="sec-title">乡村名片墙 <span class="sec-more" id="vlist-count"></span></h2>
@@ -101,6 +131,8 @@
 
   <!-- ===== 精品线路 ===== -->
   <section class="sec routes-sec" id="routes">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker">CURATED ROUTES</p>
       <h2 class="sec-title">精品线路 <span class="sec-more" id="routes-count"></span></h2>
@@ -111,6 +143,8 @@
 
   <!-- ===== 乡村土著 ===== -->
   <section class="sec local-sec" id="local">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker">LOCAL COMPANIONS</p>
       <h2 class="sec-title">乡村土著 · 你本地的"土著朋友"</h2>
@@ -156,6 +190,8 @@
 
   <!-- ===== 关于 / 数据来源 / FAQ ===== -->
   <section class="sec about-sec" id="about">
+    <div class="sec-bg" aria-hidden="true"></div>
+    <div class="sec-mask" aria-hidden="true"></div>
     <div class="sec-inner">
       <p class="kicker center">ABOUT & SOURCES</p>
       <h2 class="sec-title center">关于旧林游</h2>
@@ -170,8 +206,8 @@
 <footer class="footer">
   <div class="footer-inner">
     <div class="f-brand">
-      <img class="brand-logo f-logo" src="/img/logo.png" alt="旧林游 · 乡村名片">
-      <b class="f-name">乡村名片</b>
+      <img class="brand-logo f-logo" src="/img/logo.png?v=2" alt="">
+      <b class="f-name">旧林游</b>
     </div>
     <p class="f-tag">村村有名片，千村千样</p>
     <p class="f-note">© 2026 旧林游 · 乡村名片展示平台 · 内容均来自可核实的公开资料，坐标除注明外为示意位置。</p>
@@ -209,6 +245,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/vendor/echarts.min.js"></script>
-<script src="/app.js?v=39"></script>
+<script src="/app.js?v=41"></script>
+<!-- 动效模块（GSAP）：仅视觉动效，模块加载失败时静默降级，不影响页面功能 -->
+<script type="module" src="/motion.js?v=5"></script>
 </body>
 </html>

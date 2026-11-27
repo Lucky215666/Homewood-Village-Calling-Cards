@@ -578,8 +578,9 @@ function attachSectionBackdrop() {
      这里反过来算：先定分界线要落在屏幕哪个高度，
      再倒推需要滚到哪 —— 于是每段的落点都统一，
      分界线稳定露在导航下方，正文落在分界线再往下一点。 */
-  const LINE_TARGET = 130;   // 分界线的目标屏幕位置（px）
-  const CONTENT_GAP = 28;    // 正文（kicker）距分界线的最小距离
+  // 分界线只露在导航下面一点点；正文紧随其后。
+  const LINE_BELOW_NAV = 18; // 分界线距导航下沿的距离（px）
+  const CONTENT_GAP = 20;    // 正文（kicker）距分界线的最小距离
   const PAD_TOP = 64;        // .sec-inner 的顶部内边距，正文距段落顶边的距离
 
   const navHeight = () => {
@@ -599,12 +600,12 @@ function attachSectionBackdrop() {
     // 正文位置 = 段落顶 - 滚动位置 + PAD_TOP = w*(1 - L/vh)... 反解得 L：
     //   正文 - L = L*(w/vh - 1) + PAD_TOP
     // 长段落（w≥vh）正文天然在分界线下方 PAD_TOP；短段落需把线抬高一些
-    let L = LINE_TARGET;
+    let L = navHeight() + LINE_BELOW_NAV;
     if (w < vh) {
       const need = (PAD_TOP - CONTENT_GAP) / (1 - w / vh);
       L = Math.min(L, need);
     }
-    L = Math.max(L, navHeight() + 26);      // 至少露在导航下方
+    L = Math.max(L, navHeight() + 10);      // 至少露在导航下方
     L = Math.min(L, vh * 0.5);              // 不要高到屏幕中部以上
 
     const p = Math.max(0, Math.min(1, 1 - L / vh));
@@ -620,6 +621,7 @@ function attachSectionBackdrop() {
     const idx = layers.findIndex((l) => l.sec.id === id);
     if (idx < 0) return;                    // 不是段落锚点（如 #main）→ 交给浏览器
     e.preventDefault();
+    invalidate();                 // 防止段落高度变化后仍用旧测量
     const top = scrollTopForSection(idx);
     window.scrollTo({ top, behavior: REDUCED ? 'auto' : 'smooth' });
     if (history.replaceState) history.replaceState(null, '', '#' + id);

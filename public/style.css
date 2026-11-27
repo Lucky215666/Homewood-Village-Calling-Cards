@@ -92,31 +92,44 @@ img{max-width:100%}
 .center{text-align:center}
 
 /* ---------- nav ---------- */
-/* 固定在窗口顶部：半透明玻璃质感 + 底部细描边，与页面内容分层 */
+/* 固定在窗口顶部的「浮动功能层」：半透明材质 + 毛玻璃，页面从下方穿过它。
+   动效遵循 Apple 式原则——
+   · 按下即反馈（:active 立刻缩放），不等 click 松手
+   · 统一用 cubic-bezier(.32,.72,0,1) 这类「可被打断」的缓动，近似弹簧
+   · 内容与浮动栏的交界用渐隐代替硬边框
+   · 材质之上用更高对比 + 微量字距，保证「动态可读性」（vibrancy） */
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:80;
-  /* 首页（未滚动）：近乎实色的深底，稳住首屏 */
-  background:rgba(8,11,15,.95);
-  backdrop-filter:blur(16px) saturate(150%);
-  -webkit-backdrop-filter:blur(16px) saturate(150%);
-  border-bottom:1px solid rgba(255,255,255,.10);
-  box-shadow:0 1px 0 rgba(255,255,255,.05),0 6px 24px rgba(0,0,0,.18);
-  transition:background .35s ease,box-shadow .35s ease,border-color .35s ease;
+  /* 首页（未滚动）：材质偏实，稳住首屏 */
+  background:rgba(9,12,17,.78);
+  backdrop-filter:blur(22px) saturate(180%);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  /* 顶部亮边 = 光打在材质上；下方用柔和投影与渐隐层取代 1px 硬分割线 */
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 10px 30px -14px rgba(0,0,0,.6);
+  transition:background .4s cubic-bezier(.32,.72,0,1),
+             box-shadow .4s cubic-bezier(.32,.72,0,1);
 }
-/* 滚动后转为半透明玻璃：下层背景图透出来 */
+/* 滚动后材质变薄，下层背景图透出来 */
 .nav.is-scrolled{
-  background:rgba(10,13,17,.55);
-  border-bottom-color:rgba(198,154,58,.22);
-  box-shadow:0 1px 0 rgba(255,255,255,.05),0 6px 20px rgba(0,0,0,.16);
+  background:rgba(9,12,17,.56);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 26px -16px rgba(0,0,0,.65);
 }
+/* 滚动边缘效果：内容没入浮动栏的那一段做渐隐，而不是被一条线切断 */
+.nav::after{
+  content:"";position:absolute;left:0;right:0;top:100%;height:26px;
+  pointer-events:none;opacity:.6;
+  background:linear-gradient(to bottom,rgba(9,12,17,.5),rgba(9,12,17,0));
+  transition:opacity .4s cubic-bezier(.32,.72,0,1);
+}
+.nav.is-scrolled::after{opacity:1}
 .nav-inner{
   max-width:var(--maxw);margin:0 auto;
-  display:flex;align-items:center;gap:26px;
+  display:flex;align-items:center;gap:24px;
   padding:13px 32px;
-  transition:padding .3s ease;
+  transition:padding .35s cubic-bezier(.32,.72,0,1);
 }
 .nav.is-scrolled .nav-inner{padding-top:8px;padding-bottom:8px}
-.brand{display:flex;align-items:center;gap:11px;flex:0 0 auto;position:relative}
+.brand{display:flex;align-items:center;gap:12px;flex:0 0 auto;position:relative}
 .brand-flag{
   position:absolute;left:-9px;top:50%;transform:translateY(-50%) skewX(-12deg);
   width:5px;height:32px;border-radius:2px;
@@ -130,39 +143,63 @@ img{max-width:100%}
   border-radius:9px;
   box-shadow:inset 0 0 0 1px rgba(247,233,201,.3);
 }
-.brand-text{font-size:26px;font-weight:700;letter-spacing:2px;white-space:nowrap;
+/* 字标：书法体 + 暖金，配一圈很淡的金色辉光与暗色投影托底 */
+.brand-text{font-size:25px;font-weight:700;letter-spacing:3px;white-space:nowrap;
   font-family:"STXingkai","华文行楷","STKaiti","KaiTi",var(--serif);
-  color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.55)}
-.brand-logo{width:50px;height:50px;flex:0 0 50px;border-radius:12px;object-fit:cover;display:block;
-  box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  color:var(--gold);text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 20px rgba(198,154,58,.22);
+  transition:text-shadow .4s cubic-bezier(.32,.72,0,1)}
+.brand:hover .brand-text{text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 26px rgba(198,154,58,.38)}
+/* 新版金色标识：PNG 自带透明圆角，9% 与之对齐，避免切到金色外框 */
+.brand-logo{width:50px;height:50px;flex:0 0 50px;border-radius:9%;object-fit:contain;display:block;
+  box-shadow:0 4px 14px -6px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.06);
+  transition:transform .4s cubic-bezier(.32,.72,0,1),box-shadow .4s cubic-bezier(.32,.72,0,1)}
+.brand:hover .brand-logo{transform:translateY(-1px) scale(1.04);
+  box-shadow:0 10px 22px -8px rgba(0,0,0,.8),0 0 22px rgba(198,154,58,.3),0 0 0 1px rgba(255,255,255,.1)}
+.brand:active .brand-logo{transform:scale(.94)}
 .f-logo{width:54px;height:54px;flex:0 0 54px}
-.nav-links{display:flex;align-items:center;gap:6px;margin-left:6px}
+.nav-links{display:flex;align-items:center;gap:4px;margin-left:4px}
 .nav-links a{
-  padding:9px 16px;border-radius:999px;
-  font-size:15px;color:#C7CCD2;font-weight:600;position:relative;
-  transition:color .16s,background .16s;
+  padding:9px 15px;border-radius:999px;
+  font-size:15px;color:#D2D7DE;font-weight:600;letter-spacing:.02em;position:relative;
+  transition:color .3s cubic-bezier(.32,.72,0,1),
+             background-color .3s cubic-bezier(.32,.72,0,1),
+             transform .3s cubic-bezier(.32,.72,0,1);
 }
-.nav-links a:hover{color:var(--gold);background:rgba(198,154,58,.14)}
-.nav-links a.active{color:var(--gold);background:transparent}
-.nav-links a.active::after{
-  content:"";position:absolute;left:16px;right:16px;bottom:5px;height:2px;
-  background:var(--seal);border-radius:2px;box-shadow:0 0 8px rgba(158,59,46,.7);
+.nav-links a:hover{color:#F6E6BE;background:rgba(198,154,58,.13)}
+.nav-links a:active{transform:scale(.94)}
+.nav-links a.active{color:var(--gold);background:rgba(198,154,58,.10)}
+/* 当前项指示条：从中间生长出来，切换时是连续的动画而不是跳变 */
+.nav-links a::after{
+  content:"";position:absolute;left:50%;bottom:4px;
+  width:20px;height:2px;margin-left:-10px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(198,154,58,0),var(--gold),rgba(198,154,58,0));
+  box-shadow:0 0 10px rgba(198,154,58,.75);
+  opacity:0;transform:scaleX(.25);
+  transition:opacity .3s cubic-bezier(.32,.72,0,1),transform .35s cubic-bezier(.32,.72,0,1);
 }
+.nav-links a.active::after{opacity:1;transform:scaleX(1)}
 .nav-search{
   margin-left:auto;
   display:flex;align-items:center;gap:8px;
   height:42px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:999px;
   padding:0 18px;color:#9AA0A6;
   min-width:240px;
+  transition:background-color .3s cubic-bezier(.32,.72,0,1),
+             border-color .3s cubic-bezier(.32,.72,0,1),
+             box-shadow .3s cubic-bezier(.32,.72,0,1),
+             transform .3s cubic-bezier(.32,.72,0,1);
 }
+.nav-search:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2)}
+.nav-search:active{transform:scale(.985)}
 .nav-search svg{align-self:center}
 .nav-search input{
   flex:1;min-width:0;border:none;background:none;outline:none;
   font-family:inherit;font-size:14px;line-height:1;color:#F1EEE4;padding:0;height:100%;
 }
 .nav-search input::placeholder{color:#8B929B}
-.nav-search:focus-within{border-color:var(--gold)}
+.nav-search:focus-within{border-color:rgba(198,154,58,.7);background:rgba(255,255,255,.08);
+  box-shadow:0 0 0 4px rgba(198,154,58,.16)}
 
 /* ---------- layout ---------- */
 main{display:block}
@@ -497,7 +534,10 @@ section{scroll-margin-top:64px}
 .faq-item p{margin:0;font-size:14.5px;color:var(--muted);line-height:1.8;padding-left:23px}
 
 /* ---------- footer（与导航栏同款：暗底 + 金书法 + 红绸/印章）---------- */
-.footer{background:rgba(10,13,17,.94);color:#C7CCD2;border-top:1px solid rgba(255,255,255,.12)}
+/* 各段的 .sec-bg / .sec-mask 是 position:fixed 的全屏图层（z-index 0/1），
+   而 footer 是普通流元素 —— 会被最后一屏的固定背景层盖住，
+   底下的暗色背景与金色字标全部失真。这里抬到背景层之上。 */
+.footer{position:relative;z-index:2;background:rgba(10,13,17,.94);color:#C7CCD2;border-top:1px solid rgba(255,255,255,.12)}
 .footer-inner{max-width:var(--maxw);margin:0 auto;padding:46px 32px}
 .f-brand{display:flex;align-items:center;gap:11px;margin-bottom:12px;position:relative}
 .f-brand .brand-flag{
@@ -811,14 +851,17 @@ body{overflow-x:hidden;max-width:100%}
   width:44px;height:44px;border-radius:12px;
   border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
   cursor:pointer;place-items:center;
-  transition:background .15s,border-color .15s;
+  transition:background .25s cubic-bezier(.32,.72,0,1),
+             border-color .25s cubic-bezier(.32,.72,0,1),
+             transform .25s cubic-bezier(.32,.72,0,1);
 }
 .nav-toggle:hover{background:rgba(198,154,58,.16);border-color:rgba(198,154,58,.5)}
+.nav-toggle:active{transform:scale(.9)}
 .nav-toggle:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .nav-toggle-bars{display:block;width:20px;height:14px;position:relative}
 .nav-toggle-bars i{
   position:absolute;left:0;width:100%;height:2px;border-radius:2px;
-  background:#E6E2D6;transition:transform .22s ease,opacity .18s ease,top .22s ease;
+  background:#E6E2D6;transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .2s ease,top .3s cubic-bezier(.32,.72,0,1);
 }
 .nav-toggle-bars i:nth-child(1){top:0}
 .nav-toggle-bars i:nth-child(2){top:6px}
@@ -833,31 +876,42 @@ body{overflow-x:hidden;max-width:100%}
   width:min(300px,84vw);
   display:flex;flex-direction:column;align-items:stretch;gap:2px;
   padding:22px 18px 28px;
-  background:#141A1B;border-left:1px solid rgba(255,255,255,.1);
+  /* 与顶栏同材质的玻璃层，比顶栏更厚一点以拉开层级 */
+  background:rgba(14,18,24,.72);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-left:1px solid rgba(255,255,255,.10);
   box-shadow:-14px 0 40px rgba(0,0,0,.42);
   overflow-y:auto;overscroll-behavior:contain;
   transform:translateX(100%);
-  transition:transform .28s cubic-bezier(.22,1,.36,1);
+  transition:transform .38s cubic-bezier(.32,.72,0,1);
 }
 .nav-drawer[hidden]{display:none}
 .nav-drawer.open{transform:translateX(0)}
 .nav-drawer a{
   padding:14px 16px;border-radius:12px;
-  font-size:16px;font-weight:600;color:#C7CCD2;
-  min-height:48px;display:flex;align-items:center;
-  transition:background .15s,color .15s;
+  font-size:16px;font-weight:600;color:#D2D7DE;letter-spacing:.02em;
+  min-height:48px;display:flex;align-items:center;position:relative;
+  transition:background .3s cubic-bezier(.32,.72,0,1),color .3s cubic-bezier(.32,.72,0,1);
 }
-.nav-drawer a:hover{color:var(--gold);background:rgba(198,154,58,.14)}
-.nav-drawer a.active{color:var(--gold);background:rgba(198,154,58,.14)}
+.nav-drawer a:hover{color:#F6E6BE;background:rgba(198,154,58,.13)}
+.nav-drawer a:active{background:rgba(198,154,58,.2)}
+.nav-drawer a.active{color:var(--gold);background:rgba(198,154,58,.12)}
+/* 当前项：左侧一道金色竖条，指示位置比换色更醒目 */
+.nav-drawer a.active::before{
+  content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--gold);box-shadow:0 0 10px rgba(198,154,58,.6);
+}
 .nav-drawer a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .nav-drawer-close{
   align-self:flex-end;
   width:44px;height:44px;border-radius:50%;margin-bottom:8px;
   border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
   color:#C7CCD2;font-size:17px;cursor:pointer;display:grid;place-items:center;
-  transition:background .15s,color .15s;
+  transition:background .25s cubic-bezier(.32,.72,0,1),color .25s cubic-bezier(.32,.72,0,1),transform .25s cubic-bezier(.32,.72,0,1);
 }
 .nav-drawer-close:hover{background:rgba(198,154,58,.16);color:var(--gold)}
+.nav-drawer-close:active{transform:scale(.9)}
 .nav-drawer-close:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
 .nav-backdrop{
@@ -867,6 +921,22 @@ body{overflow-x:hidden;max-width:100%}
 }
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 body.nav-open{overflow:hidden}
+
+/* ---------- 导航栏的无障碍适配 ---------- */
+/* 系统关闭「透明度」：材质退回不透明，去掉毛玻璃与渐隐层，文字对比度不受影响 */
+@media (prefers-reduced-transparency: reduce){
+  .nav,.nav.is-scrolled{background:#0B0E13;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .nav::after{display:none}
+  .nav-search{background:#161A20}
+  .nav-drawer{background:#0E1218;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+/* 系统要求更高对比：补回清晰的分隔线并提亮次要文字 */
+@media (prefers-contrast: more){
+  .nav{border-bottom:1px solid rgba(255,255,255,.42)}
+  .nav-links a{color:#F2F4F7}
+  .nav-search{border-color:rgba(255,255,255,.4)}
+  .nav-search input::placeholder{color:#A9AFB7}
+}
 
 /* ============================================================
    ≤ 920px —— 平板与手机共用
@@ -928,7 +998,7 @@ body.nav-open{overflow:hidden}
 @media (max-width:640px){
   .nav-inner{padding:9px 14px}
   .brand-text{font-size:19px;letter-spacing:.5px}
-  .brand-logo{width:38px;height:38px;flex:0 0 38px;border-radius:10px}
+  .brand-logo{width:38px;height:38px;flex:0 0 38px;border-radius:9%}
   .nav-search{padding:0 12px}
   .nav-search input{font-size:16px} /* ≥16px 防止 iOS 聚焦时自动放大 */
 

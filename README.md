@@ -25,6 +25,7 @@ Homewood (旧林游) turns every Chinese village into a shareable **digital call
 - **乡村名片墙 / Village cards** — one personalized digital card per village (profile · history · culture · produce · spots · honors · notable people), with global search.
 - **精品线路 / Curated routes** — official and team-designed itineraries; card imagery, expandable day-by-day plans, and a dedicated route detail panel.
 - **乡村土著 / Local companions** — the "local companion / rural revitalization manager" service model and its enablement pipeline.
+- **Mobile adaptation** — breakpoints at 380 / 420 / 640 / 920 / 1440 px; under 420 px the header becomes two rows so the search field gets the full width, the map strip drops its arrows and swipes instead, tap targets are 44 px, and notch insets are handled with `env(safe-area-inset-*)`. Landscape and touch (`hover: none`) have their own rules.
 - **Craft & care** — 国风 (Chinese literati) visual system, per-module photographic parallax backdrops, and accessibility (visible focus rings, skip link, `prefers-reduced-motion`).
 
 ## Tech stack · 技术栈

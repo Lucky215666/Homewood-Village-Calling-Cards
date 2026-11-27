@@ -40,6 +40,9 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 html,body{margin:0;padding:0}
+/* 移动端基础：禁止 iOS 聚焦输入框时整页放大；去掉 300ms 点击延迟与灰色高亮 */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+a,button,input,label,summary{touch-action:manipulation}
 body{
   background:var(--bg);
   color:var(--ink);
@@ -202,11 +205,14 @@ img{max-width:100%}
   box-shadow:0 0 0 4px rgba(198,154,58,.16)}
 
 /* ---------- layout ---------- */
+/* --nav-h = 固定导航实际高度。窄屏导航改成两行后由断点覆写，
+   正文下移与锚点偏移都引用同一个变量，避免两处写死后对不上 */
+:root{--nav-h:64px}
 main{display:block}
 /* 导航已改为 position:fixed，内容整体下移让出导航高度 */
-main{padding-top:64px}
+main{padding-top:var(--nav-h)}
 /* 锚点跳转：段落顶边正好落在固定导航下沿，不留额外空档 */
-section{scroll-margin-top:64px}
+section{scroll-margin-top:var(--nav-h)}
 
 /* ---------- 纵向节奏（统一各段排版） ----------
    所有段落共用同一套标题区间距与内边距。
@@ -346,6 +352,7 @@ section{scroll-margin-top:64px}
   display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;
   padding:6px 6px 16px;flex:1;min-width:0;
   scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%);
   mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 18px),transparent 100%);
 }
@@ -942,6 +949,7 @@ body.nav-open{overflow:hidden}
    ≤ 920px —— 平板与手机共用
    ============================================================ */
 @media (max-width:920px){
+  :root{--nav-h:64px}
   /* 导航：横向链接换成抽屉 */
   .nav-links-desktop{display:none}
 
@@ -990,12 +998,22 @@ body.nav-open{overflow:hidden}
   .featured-img{min-height:220px}
   .featured-body{padding:22px 22px 26px}
   .featured-body h3{font-size:23px}
+
+  /* ---- 触摸目标：筛选项 / 小按钮统一到 44px 高度 ---- */
+  .chip{min-height:44px;display:inline-flex;align-items:center;padding:10px 18px}
+  .chips-toggle{min-height:44px;display:inline-flex;align-items:center;padding:10px 16px}
+  .btn-sm{min-height:44px;padding:10px 20px}
+  .route-toggle{min-height:44px;padding:11px 20px}
+  .detail-close{width:44px;height:44px}
+  /* iOS 在输入框字号小于 16px 时聚焦会强制放大整页，平板断点也要覆盖 */
+  .nav-search input{font-size:16px}
 }
 
 /* ============================================================
    ≤ 640px —— 手机
    ============================================================ */
 @media (max-width:640px){
+  :root{--nav-h:62px}
   .nav-inner{padding:9px 14px}
   .brand-text{font-size:19px;letter-spacing:.5px}
   .brand-logo{width:38px;height:38px;flex:0 0 38px;border-radius:9%}
@@ -1015,7 +1033,13 @@ body.nav-open{overflow:hidden}
   .sec-inner{padding:var(--sec-pad-top,40px) 18px var(--sec-pad-y,48px)}
   .sec-title{font-size:23px;letter-spacing:.5px}
   .sec-lead{font-size:15px;line-height:1.8}
-  .kicker{font-size:11px;letter-spacing:3px}
+  .kicker{font-size:12px;letter-spacing:2.5px}
+
+  /* 迷你地图条：两侧箭头在手机上白吃 88px 宽度，隐藏后整条直接滑动 */
+  .strip-btn{display:none}
+  .mini-strip{scroll-snap-type:x proximity;scroll-padding-left:2px;padding:6px 2px 14px}
+  .mini{scroll-snap-align:start;width:104px}
+  .featured-src{font-size:12px}
 
   /* 单列栅格 */
   .feat-grid,.faq-grid{grid-template-columns:1fr}
@@ -1050,7 +1074,8 @@ body.nav-open{overflow:hidden}
   /* 名片详情浮层 */
   .detail-card{width:100vw;max-width:100vw}
   .detail-body{padding:24px 18px 40px}
-  .detail-close{width:44px;height:44px;margin:14px 14px 0 0}
+  .detail-close{width:44px;height:44px;top:env(safe-area-inset-top);
+    margin:calc(14px + env(safe-area-inset-top)) 14px 0 0}
   .vhead h1{font-size:26px}
   .module{padding:20px 18px;border-radius:14px}
   .module h2{font-size:18px}
@@ -1072,10 +1097,11 @@ body.nav-open{overflow:hidden}
    ============================================================ */
 @media (max-width:380px){
   .hero-title{font-size:28px}
-  .hero-stats{grid-template-columns:1fr;gap:9px}
-  .stat{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:14px 16px}
+  /* 四张数据卡保持 2×2：改成单列会让首屏多占近 120px */
+  .hero-stats{grid-template-columns:1fr 1fr;gap:9px}
+  .stat{padding:13px 10px;border-radius:12px}
   .stat b{font-size:26px}
-  .stat i{margin-top:0}
+  .stat i{font-size:12px;margin-top:4px;letter-spacing:.5px}
   .sec-title{font-size:21px}
   .vrow-cover{height:124px}
   .tz-slogan p{font-size:17px}
@@ -1085,9 +1111,52 @@ body.nav-open{overflow:hidden}
 }
 
 /* ============================================================
+   ≤ 420px —— 窄屏手机：导航改两行，搜索框独占一行
+   一行放不下「品牌 + 搜索 + 菜单」：320px 下搜索框曾被挤到 55px，
+   连占位符都看不全。改成第二行整行给搜索。
+   ============================================================ */
+@media (max-width:420px){
+  :root{--nav-h:115px}
+  .nav-inner{flex-wrap:wrap;gap:8px 10px;padding:9px 14px 10px}
+  .brand{order:1}
+  .nav-toggle{order:2;margin-left:auto}
+  .nav-search{order:3;flex:1 1 100%;width:100%;min-width:0;height:44px;margin-left:0}
+  /* 两行导航高度固定，避免滚动时收缩导致正文与导航错位 */
+  .nav.is-scrolled .nav-inner{padding-top:9px;padding-bottom:10px}
+}
+
+/* ============================================================
+   触摸设备（无 hover）：点击反馈 + 去掉依赖悬停的抬起效果
+   ============================================================ */
+@media (hover:none){
+  *{-webkit-tap-highlight-color:rgba(74,107,83,.14)}
+  .chip,.chips-toggle,.route-toggle,.btn,.detail-close,.nav-drawer a{touch-action:manipulation}
+  .chip:active{background:var(--green-soft);color:var(--green-deep)}
+  .btn:active{transform:translateY(1px)}
+  .mini:active{border-color:var(--green)}
+  .route-toggle:active{background:var(--green-soft)}
+  .feat:hover,.vrow:hover,.mini:hover,.rc-media:hover{transform:none}
+}
+
+/* ============================================================
+   手机横屏：竖向空间紧张，压缩首屏与地图高度
+   ============================================================ */
+@media (max-width:920px) and (orientation:landscape) and (max-height:500px){
+  .hero-inner{padding:30px 22px 28px;gap:22px}
+  .hero-title{font-size:30px}
+  .hero-stats{grid-template-columns:repeat(4,1fr);gap:10px}
+  .stat{padding:14px 10px}
+  .stat b{font-size:26px}
+  .sec-inner{padding-top:30px;padding-bottom:36px}
+  #map-canvas{height:clamp(260px,72vh,340px)}
+  .detail-body,.rd-body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+}
+
+/* ============================================================
    ≥ 921px —— 桌面：显示横向导航，隐藏抽屉
    ============================================================ */
 @media (min-width:921px){
+  :root{--nav-h:76px}
   .nav-links-desktop{
     display:flex;flex-direction:row;align-items:center;gap:6px;
     margin-left:6px;
@@ -1112,3 +1181,21 @@ body.nav-open{overflow:hidden}
   .hero::before{animation:none}
 }
 
+
+/* ============================================================
+   刘海屏 / 圆角屏安全区（必须放在所有断点之后，才能覆盖各断点的 padding）
+   viewport-fit=cover 后，横屏时左右 inset 不为 0；全屏或添加到主屏幕时上下 inset 生效。
+   ============================================================ */
+@supports (padding:max(0px)){
+  @media (max-width:920px){
+    .nav-inner{
+      padding-left:max(14px,env(safe-area-inset-left));
+      padding-right:max(14px,env(safe-area-inset-right));
+    }
+    .nav-drawer{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+    .detail-body{padding-bottom:calc(44px + env(safe-area-inset-bottom))}
+    .rd-body{padding-bottom:calc(44px + env(safe-area-inset-bottom))}
+    .footer-inner{padding-bottom:calc(34px + env(safe-area-inset-bottom))}
+    .mini-strip{scroll-padding-left:calc(2px + env(safe-area-inset-left))}
+  }
+}

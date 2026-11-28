@@ -11,7 +11,7 @@
 <link rel="icon" href="/img/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="/img/favicon-16.png" sizes="16x16" type="image/png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link rel="stylesheet" href="/style.css?v=50">
+<link rel="stylesheet" href="/style.css?v=57">
 </head>
 <body>
 
@@ -112,7 +112,24 @@
       </div>
       <div class="map-wrap">
         <div id="map-canvas"></div>
-        <div class="map-hint"><span>坐标除注明外为示意位置，仅用于地图展示，不作为导航依据。</span></div>
+        <!-- 视图控制：缩放 / 复位（右下角，浮动在地图之上） -->
+        <div class="map-tools" id="map-tools" role="group" aria-label="地图视图控制">
+          <div class="map-tools-row">
+            <button class="map-tool" id="map-zoom-in" type="button" aria-label="放大地图" title="放大">+</button>
+            <button class="map-tool" id="map-zoom-out" type="button" aria-label="缩小地图" title="缩小">−</button>
+          </div>
+          <label class="map-zoom" title="缩放比例">
+            <input id="map-zoom-range" type="range" min="0" max="100" step="1" value="0" aria-label="地图缩放比例" aria-describedby="map-zoom-val">
+            <span class="map-zoom-val" id="map-zoom-val" aria-live="polite">100%</span>
+          </label>
+          <div class="map-tools-row">
+            <button class="map-tool map-tool-reset" id="map-zoom-reset" type="button" aria-label="恢复默认缩放与位置" title="恢复默认">↺</button>
+          </div>
+        </div>
+        <div class="map-hint">
+          <span>滚轮 / 双指缩放 · 拖动平移 · 点击省份可筛选该省乡村</span>
+          <span>坐标除注明外为示意位置，仅用于地图展示，不作为导航依据。</span>
+        </div>
       </div>
     </div>
   </section>
@@ -245,8 +262,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/vendor/echarts.min.js"></script>
-<script src="/app.js?v=41"></script>
+<script src="/app.js?v=44"></script>
 <!-- 动效模块（GSAP）：仅视觉动效，模块加载失败时静默降级，不影响页面功能 -->
-<script type="module" src="/motion.js?v=5"></script>
+<script type="module" src="/motion.js?v=12"></script>
 </body>
 </html>

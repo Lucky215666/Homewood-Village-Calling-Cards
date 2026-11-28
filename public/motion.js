@@ -460,21 +460,23 @@ function attachNavMotion() {
 }
 
 /* ============================================================
-    11. 段落背景切换（进度绑定滚动的模糊溶解）
+    11. 段落背景切换（滚动驱动的擦除 / 分界线）
     ============================================================ */
 
 /**
- * 每个段落的背景是 position:fixed 的独立图层。
- * 过渡进度不走时间线，而是由滚动位置直接换算（scrub）：
+ * 背景与内容彻底解耦：
+ *   - 每个背景层都是 position:fixed + 100vh，尺寸只认视口，
+ *     与段落高度、文字大小、元素增减完全无关；
+ *   - 图片以 cover 铺满视口，锚点不动，改字号也不会让背景位移或缩放。
  *
- *   段落分界线（下一段的顶边）在视口里从 66% 高度上移到 20% 高度
- *   的这段路程，就是过渡区间 —— 进度 p 从 0 走到 1。
+ * 切换方式 = 擦除（wipe）：
+ *   分界线随滚动从视口底部扫到顶部；
+ *   分界线以上：上一张背景（逐渐被收走）
+ *   分界线以下：下一张背景（逐渐露出来）
+ *   两层都用 clip-path 裁切，边界干净锐利，可见一根明显的分界线。
  *
- *   出场层：opacity 1→0，blur 0→最大值（逐渐失焦）
- *   入场层：opacity 0→1，blur 最大值→0（逐渐对焦）
- *
- * 滚得快就切得快，滚得慢就切得慢，停在半路就停住 —— 过渡与手势 1:1。
- * 中段用 smoothstep 缓一下，起止两端更柔。
+ *   进度 p 的区间长度按视口高度取（短段落则取段高并钳制），
+ *   所以过渡节奏由视口决定，不被内容高度拉长。
  */
 function attachSectionBackdrop() {
   const sections = $$('.sec');
@@ -486,100 +488,201 @@ function attachSectionBackdrop() {
     mask: sec.querySelector('.sec-mask')
   })).filter((l) => l.bg);
 
-  if (layers.length < 2) return;
+  if (!layers.length) return;
 
-  const isMobile = () => window.matchMedia('(max-width: 920px)').matches;
-  const maxBlur = () => (isMobile() ? 10 : 16);
+  // 分界线元素：全局只有一个，避免每段一套
+  let line = document.querySelector('.wipe-line');
+  if (!line) {
+    line = document.createElement('div');
+    line.className = 'wipe-line';
+    line.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(line);
+  }
 
-  // 段落顶缓存：异步渲染会改变高度，resize/延时后失效重算
+  // 段落顶缓存：内容异步渲染会改变高度，需要按需重算
   let tops = null;
   const invalidate = () => { tops = null; };
+  const measure = () => { if (!tops) tops = layers.map((l) => l.sec.offsetTop); return tops; };
 
-  const smoothstep = (p) => p * p * (3 - 2 * p);
+  const HIDDEN = 'inset(100% 0 0 0)';
+  const FULL = 'inset(0 0 0 0)';
 
-  const apply = () => {
-    if (!tops) tops = layers.map((l) => l.sec.offsetTop);
-    const vh = window.innerHeight;
-    const scrollY = window.scrollY;
-    const mb = maxBlur();
-
-    // 找当前生效的分界。分界的视口位置 b 随 i 递增：
-    //   b > zoneA  → 还没到这条分界的区间，后面的更远，break
-    //   zoneB< b ≤ zoneA → 正处在这条分界的过渡区间，取它的进度
-    //   b ≤ zoneB  → 这条已完全划过，继续看下一条
-    let inIdx = 0, p = 0; // 默认第一段完全可见
-    for (let i = 1; i < layers.length; i++) {
-      const b = tops[i] - scrollY;               // 分界线的视口位置
-      const outH = tops[i] - tops[i - 1];
-      // 区间起点不能高于出场段自身的高度，否则在段内就开始虚化
-      const zoneA = Math.min(vh * 0.66, outH - 60);
-      if (b > zoneA) break;
-      const zoneB = vh * 0.20;
-      p = Math.min(1, Math.max(0, (zoneA - b) / Math.max(1, zoneA - zoneB)));
-      inIdx = i;
-      if (b <= zoneB) continue; // 已划过，看下一条
-      break;                    // 正在过渡区间内
+  const paint = (l, clip) => {
+    l.bg.style.visibility = 'visible';
+    l.bg.style.opacity = '1';
+    l.bg.style.filter = 'none';
+    l.bg.style.clipPath = clip;
+    if (l.mask) {
+      l.mask.style.visibility = 'visible';
+      l.mask.style.opacity = '1';
+      l.mask.style.clipPath = clip;
     }
-
-    const pe = smoothstep(p); // 起止两端放缓
-    layers.forEach((l, idx) => {
-      let op = 0, blur = mb;
-      if (inIdx === 0) {
-        if (idx === 0) { op = 1; blur = 0; }
-      } else if (idx === inIdx - 1) {
-        op = 1 - pe; blur = mb * pe;          // 出场：逐渐失焦
-      } else if (idx === inIdx) {
-        op = pe; blur = mb * (1 - pe);        // 入场：逐渐对焦
-      }
-
-      const vis = op > 0.001;
-      l.bg.style.opacity = op.toFixed(3);
-      l.bg.style.filter = blur < 0.05 ? 'none' : `blur(${blur.toFixed(2)}px)`;
-      l.bg.style.visibility = vis ? 'visible' : 'hidden';
-      if (l.mask) {
-        l.mask.style.opacity = op.toFixed(3);
-        l.mask.style.visibility = vis ? 'visible' : 'hidden';
-      }
-    });
   };
 
-  // 减少动态效果：不做虚化，按位置硬切
-  if (REDUCED) {
-    const update = () => {
-      if (!tops) tops = layers.map((l) => l.sec.offsetTop);
-      const probe = window.scrollY + window.innerHeight * 0.5;
-      let active = 0;
-      for (let i = 0; i < layers.length; i++) {
-        if (probe >= tops[i]) active = i;
+  const apply = () => {
+    const t = measure();
+    const vh = window.innerHeight;
+    const y = window.scrollY;
+    const n = layers.length;
+
+    // 找当前所处的分界：窗口 [start, end] 互不重叠
+    //   end   = 下段顶边（分界线到达视口顶）
+    //   start = max(0, end - vh, 上段顶边) —— 长段落窗口长度=一个视口
+    let idx = 0, p = 0;
+    for (let i = 1; i < n; i++) {
+      const end = t[i];
+      const start = Math.max(0, end - vh, t[i - 1]);
+      if (y >= end) { idx = i; p = 1; continue; }
+      if (y >= start) {
+        idx = i;
+        p = (y - start) / Math.max(1, end - start);
+        break;
       }
-      layers.forEach((l, idx) => {
-        const on = idx === active;
-        l.bg.style.opacity = on ? '1' : '0';
-        l.bg.style.filter = 'none';
-        l.bg.style.visibility = on ? 'visible' : 'hidden';
-        if (l.mask) {
-          l.mask.style.opacity = on ? '1' : '0';
-          l.mask.style.visibility = on ? 'visible' : 'hidden';
-        }
-      });
-    };
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', () => { invalidate(); update(); });
-    setTimeout(() => { invalidate(); update(); }, 600);
-    setTimeout(() => { invalidate(); update(); }, 1500);
-    return;
+      break;
+    }
+    p = Math.min(1, Math.max(0, p));
+
+    // 滚到页面最底时，最后一处切换直接判为完成：
+    // 此时页面无法再滚动，若仍停留在过渡中途，
+    // 会在导航下方留一条上一段背景的残带。
+    const maxScroll = document.documentElement.scrollHeight - vh;
+    if (y >= maxScroll - 2 && idx === n - 1) p = 1;
+
+    if (REDUCED) {
+      // 减少动态效果：不做擦除过渡，直接显示当前段
+      layers.forEach((l, i) => paint(l, i === idx ? FULL : HIDDEN));
+      line.style.opacity = '0';
+      return;
+    }
+
+    if (idx === 0) {
+      layers.forEach((l, i) => paint(l, i === 0 ? FULL : HIDDEN));
+      line.style.opacity = '0';
+      line.style.transform = 'translate3d(0,' + vh + 'px,0)';
+      return;
+    }
+
+    const outClip = 'inset(0 0 ' + (p * 100).toFixed(3) + '% 0)';   // 上：逐渐收走
+    const inClip = 'inset(' + ((1 - p) * 100).toFixed(3) + '% 0 0 0)'; // 下：逐渐露出
+    layers.forEach((l, i) => {
+      if (i === idx - 1) paint(l, outClip);
+      else if (i === idx) paint(l, inClip);
+      else paint(l, HIDDEN);
+    });
+
+    // 分界线：两端淡入淡出，中段清晰
+    const boundary = (1 - p) * vh;
+    const edge = Math.min(p, 1 - p);
+    let lineOp = edge < 0.03 ? 0 : Math.min(1, edge / 0.10);
+    // 线落到固定导航背后（含少量余量）时直接隐去，
+    // 避免那一小段在导航半透明材质下透出来
+    if (boundary <= navHeight() + 6) lineOp = 0;
+    line.style.transform = 'translate3d(0,' + boundary.toFixed(2) + 'px,0)';
+    line.style.opacity = lineOp.toFixed(3);
+  };
+
+  /* ---------- 锚点跳转：落到「分界线下方」 ----------
+     直接 scrollIntoView 只会把段落顶边顶到导航下沿，
+     但分界线的屏幕位置取决于该段过渡窗口的长度（短段落会漂移）。
+     这里反过来算：先定分界线要落在屏幕哪个高度，
+     再倒推需要滚到哪 —— 于是每段的落点都统一，
+     分界线稳定露在导航下方，正文落在分界线再往下一点。 */
+  // 跳转后分界线要「看不见」：把它推到固定导航背后（或被导航盖住），
+  // 此时切换已完成，屏幕上是干净的新背景，正文刚好露在导航下方。
+  const CONTENT_BELOW_NAV = 12; // 正文距导航下沿的距离（px）
+
+  const navHeight = () => {
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
+    return Number.isFinite(v) && v > 0 ? v : 64;
+  };
+
+  const scrollTopForSection = (idx) => {
+    if (idx <= 0) return 0;
+    const t = measure();
+    const vh = window.innerHeight;
+    const end = t[idx];
+    const start = Math.max(0, end - vh, t[idx - 1]);
+    const w = Math.max(1, end - start);
+
+    // 设分界线屏幕位置为 L，则：
+    //   段落顶 = w*(1 - L/vh)          （窗口长度 w、视口高 vh）
+    //   正文   = 段落顶 + padTop
+    // 要求正文落在导航下方 CONTENT_BELOW_NAV 处：
+    //   L*(w/vh) + padTop = navH + CONTENT_BELOW_NAV
+    const navH = navHeight();
+    const inner = layers[idx].sec.querySelector('.sec-inner');
+    const padTop = inner ? (parseFloat(getComputedStyle(inner).paddingTop) || 0) : 0;
+
+    const need = navH + CONTENT_BELOW_NAV - padTop; // 分界线需要下移的量
+    let L = need <= 0 ? 0 : (need * vh) / w;        // ≤0 时限可完全在视口上方
+    L = Math.max(0, Math.min(L, vh * 0.5));
+
+    const p = Math.max(0, Math.min(1, 1 - L / vh));
+    return Math.max(0, Math.round(start + p * w));
+  };
+
+  // 拦截站内锚点点击（桌面导航 / 抽屉 / 品牌 logo）
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = (a.getAttribute('href') || '').slice(1);
+    if (!id) return;
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    if (idx < 0) return;                    // 不是段落锚点（如 #main）→ 交给浏览器
+    e.preventDefault();
+    invalidate();                 // 防止段落高度变化后仍用旧测量
+    const top = scrollTopForSection(idx);
+    window.scrollTo({ top, behavior: REDUCED ? 'auto' : 'smooth' });
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+  });
+
+  /* 直接打开带锚点的链接（如 /#routes）时，浏览器原生跳转只按 scroll-margin 计算，
+     落点和点击导航不一致。这里用同一套规则校正一次；
+     若用户已经开始自己滚动，就不再干预。 */
+  let userScrolled = false;
+  ['wheel', 'touchmove', 'keydown'].forEach((ev) =>
+    window.addEventListener(ev, () => { userScrolled = true; }, { passive: true, once: true })
+  );
+
+  const settleHash = () => {
+    if (userScrolled) return;
+    const id = (location.hash || '').slice(1);
+    if (!id) return;
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    if (idx < 0) return;
+    const top = scrollTopForSection(idx);
+    if (Math.abs(window.scrollY - top) > 2) window.scrollTo({ top, behavior: 'auto' });
+  };
+
+  if (location.hash) {
+    settleHash();
+    setTimeout(() => { invalidate(); settleHash(); }, 400);
+    setTimeout(() => { invalidate(); settleHash(); }, 1200);
   }
 
+  // 供验证脚本使用
+  window.__scrollTopForSection = (id) => {
+    const idx = layers.findIndex((l) => l.sec.id === id);
+    return idx < 0 ? null : scrollTopForSection(idx);
+  };
+
+  let raf = 0;
+  const schedule = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = 0; apply(); });
+  };
+
   apply();
-  window.addEventListener('scroll', apply, { passive: true });
-  window.addEventListener('resize', () => { invalidate(); apply(); });
-  // 内容异步渲染会改变段落高度，重算分界位置
-  setTimeout(() => { invalidate(); apply(); }, 500);
-  setTimeout(() => { invalidate(); apply(); }, 1500);
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', () => { invalidate(); schedule(); });
+  // 内容异步渲染 / 字体加载会改变段落位置，重算窗口
+  setTimeout(() => { invalidate(); schedule(); }, 400);
+  setTimeout(() => { invalidate(); schedule(); }, 1200);
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => { invalidate(); apply(); }).catch(() => {});
+    document.fonts.ready.then(() => { invalidate(); schedule(); }).catch(() => {});
   }
+  // 供验证脚本强制刷新
+  window.__refreshBackdrop = () => { invalidate(); apply(); };
 }
 
 /* ============================================================

@@ -434,8 +434,8 @@ async function drawMini(e, i) {
     geo: {
       map: e.map, silent: true, roam: false,
       label: { show: false },
-      itemStyle: { areaColor: '#F2EEE3', borderColor: '#CFC6AE', borderWidth: .6 },
-      emphasis: { label: { show: false }, itemStyle: { areaColor: '#F2EEE3' } },
+      itemStyle: { areaColor: '#EBE4D3', borderColor: 'rgba(74,107,83,.26)', borderWidth: .6 },
+      emphasis: { label: { show: false }, itemStyle: { areaColor: '#EBE4D3' } },
       select: { label: { show: false } },
       zoom: 1.04
     },
@@ -495,6 +495,154 @@ function renderFilters() {
   });
 }
 
+/* ---------- 地图配色 / 缩放控制 ---------- */
+
+const MAP_ZOOM_MIN = 0.8;
+const MAP_ZOOM_MAX = 8;
+const MAP_ZOOM_FACTOR = 1.45;
+
+// 省级填色：按收录乡村数分档，越多越深；无收录用中性纸色
+const MAP_TINT_EMPTY = '#EBE4D3';
+const MAP_TINT_STEPS = [
+  { min: 6, color: '#7FAE77' },
+  { min: 3, color: '#98C08B' },
+  { min: 2, color: '#B4D0A4' },
+  { min: 1, color: '#D2E2C3' }
+];
+function mapTint(n) {
+  for (const st of MAP_TINT_STEPS) if (n >= st.min) return st.color;
+  return MAP_TINT_EMPTY;
+}
+
+// 视图状态：切换底图范围时重置，同一底图重绘（筛选变化）时沿用
+let mapScopeKey = null;
+let mapDefaultView = { zoom: 1.05, center: null };
+let mapView = null;
+let mapToolsWired = false;
+
+const mapClamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+// 滑杆用对数刻度：低倍率区间更细腻
+function mapZoomToPct(z) {
+  const t = Math.log(z / MAP_ZOOM_MIN) / Math.log(MAP_ZOOM_MAX / MAP_ZOOM_MIN);
+  return Math.round(mapClamp(t, 0, 1) * 100);
+}
+function mapPctToZoom(p) {
+  return MAP_ZOOM_MIN * Math.pow(MAP_ZOOM_MAX / MAP_ZOOM_MIN, mapClamp(p, 0, 100) / 100);
+}
+
+function currentMapGeo() {
+  const inst = state.charts.map;
+  if (!inst) return null;
+  const opt = inst.getOption();
+  return (opt && opt.geo && opt.geo[0]) || null;
+}
+
+// 同步控件：滑杆位置、百分比、两端按钮可用性
+function syncMapTools() {
+  const g = currentMapGeo();
+  if (!g) return;
+  const z = typeof g.zoom === 'number' ? g.zoom : mapDefaultView.zoom;
+  const range = document.getElementById('map-zoom-range');
+  const val = document.getElementById('map-zoom-val');
+  const zin = document.getElementById('map-zoom-in');
+  const zout = document.getElementById('map-zoom-out');
+  if (range) range.value = String(mapZoomToPct(z));
+  if (val) val.textContent = Math.round((z / mapDefaultView.zoom) * 100) + '%';
+  if (zin) zin.disabled = z >= MAP_ZOOM_MAX - 0.001;
+  if (zout) zout.disabled = z <= MAP_ZOOM_MIN + 0.001;
+}
+
+// 设定绝对缩放；center 省略则保持当前中心
+function setMapZoom(z, center) {
+  const inst = state.charts.map;
+  if (!inst) return;
+  const cur = currentMapGeo() || {};
+  const next = mapClamp(z, MAP_ZOOM_MIN, MAP_ZOOM_MAX);
+  const c = center !== undefined ? center : (cur.center || null);
+  inst.setOption({ geo: { zoom: next, center: c } });
+  mapView = { zoom: next, center: c };
+  syncMapTools();
+}
+
+function resetMapView() {
+  const inst = state.charts.map;
+  if (!inst) return;
+  inst.setOption({ geo: { zoom: mapDefaultView.zoom, center: mapDefaultView.center } });
+  mapView = { zoom: mapDefaultView.zoom, center: mapDefaultView.center };
+  syncMapTools();
+}
+
+// 按当前筛选（标签 / 搜索词，不含省份）统计，用于填色
+function mapCounts(meta) {
+  const f = state.filters;
+  const q = (f.q || '').trim().toLowerCase();
+  const vs = ((state.home && state.home.villages) || []).filter((v) => {
+    if (f.tag && !(v.tags || []).includes(f.tag)) return false;
+    if (q) {
+      const hay = (v.name + ' ' + v.county + ' ' + (v.town || '') + ' ' + (v.tagline || '') + ' ' + (v.tags || []).join(' ')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const counts = {};
+  vs.forEach((v) => {
+    const k = meta.key === 'china' ? (v.province || '重庆市') : (v.county || '');
+    if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  return counts;
+}
+
+const ADMIN_SUFFIX = /(市辖区|自治县|自治旗|县|区|市|旗)$/;
+function normAdmin(n) { return String(n || '').replace(ADMIN_SUFFIX, ''); }
+
+function countForRegion(name, counts) {
+  if (counts[name]) return counts[name];
+  const nn = normAdmin(name);
+  let sum = 0;
+  for (const k of Object.keys(counts)) if (normAdmin(k) === nn) sum += counts[k];
+  return sum;
+}
+
+// 生成填色数据：包含 0 值区域，保证每块都有底色与 tooltip
+function buildRegionData(meta, counts) {
+  const mapObj = echarts.getMap(meta.map);
+  const feats = (mapObj && mapObj.geoJSON && mapObj.geoJSON.features) || [];
+  const activeProv = meta.key === 'china' ? (state.filters.province || '') : '';
+  return feats.map((ft) => {
+    const nm = (ft.properties && (ft.properties.name || ft.properties.NAME)) || '';
+    const n = countForRegion(nm, counts);
+    const isActive = activeProv && nm === activeProv;
+    return {
+      name: nm,
+      value: n,
+      // 颜色由 visualMap 分段映射；这里只保留名称与数值
+      itemStyle: isActive ? { borderColor: 'rgba(158,59,46,.9)', borderWidth: 2 } : undefined
+    };
+  });
+}
+
+function wireMapTools() {
+  if (mapToolsWired) return;
+  mapToolsWired = true;
+  const zin = document.getElementById('map-zoom-in');
+  const zout = document.getElementById('map-zoom-out');
+  const reset = document.getElementById('map-zoom-reset');
+  const range = document.getElementById('map-zoom-range');
+  if (zin) zin.addEventListener('click', () => {
+    const g = currentMapGeo();
+    if (g) setMapZoom((g.zoom || mapDefaultView.zoom) * MAP_ZOOM_FACTOR);
+  });
+  if (zout) zout.addEventListener('click', () => {
+    const g = currentMapGeo();
+    if (g) setMapZoom((g.zoom || mapDefaultView.zoom) / MAP_ZOOM_FACTOR);
+  });
+  if (reset) reset.addEventListener('click', resetMapView);
+  if (range) range.addEventListener('input', () => {
+    setMapZoom(mapPctToZoom(parseFloat(range.value) || 0));
+  });
+}
+
 async function initMap() {
   const dom = document.getElementById('map-canvas');
   if (!dom) return;
@@ -508,40 +656,161 @@ async function initMap() {
   const chart = echarts.init(dom);
   state.charts.map = chart;
 
+  // 换底图范围才重置视图；同一底图因筛选重绘时沿用当前缩放/位置
+  if (mapScopeKey !== meta.key) {
+    mapScopeKey = meta.key;
+    mapView = null;
+    mapDefaultView = {
+      zoom: mapClamp(meta.zoom || 1.05, MAP_ZOOM_MIN, MAP_ZOOM_MAX),
+      center: meta.center || null
+    };
+  }
+  const view = mapView || mapDefaultView;
+  const isChina = meta.key === 'china';
+
   const list = filteredVillages().filter(meta.test).filter((v) => typeof v.lat === 'number' && typeof v.lng === 'number');
+  const regionData = buildRegionData(meta, mapCounts(meta));
 
   chart.setOption({
+    animation: true,
+    animationDuration: 600,
+    animationDurationUpdate: 260,
+    animationEasingUpdate: 'cubicOut',
     tooltip: {
       trigger: 'item', confine: true,
+      backgroundColor: 'rgba(28,26,22,.94)',
+      borderColor: 'rgba(198,154,58,.35)', borderWidth: 1,
+      padding: [10, 12],
+      textStyle: { color: '#F4F1E6', fontSize: 12.5, lineHeight: 18 },
+      extraCssText: 'border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:260px',
       formatter: (p) => {
-        if (p.seriesType !== 'effectScatter' && p.seriesType !== 'scatter') return esc(p.name || '');
-        const v = p.data.v;
-        if (!v) return esc(p.name);
-        return `<b style="font-size:15px">${esc(v.name)}</b><br>
-          <span style="color:#888">${esc(regionText(v))}</span><br>
-          <span style="font-size:12.5px">${esc(v.tagline || '')}</span><br>
-          <span style="color:#4A6B53;font-size:12.5px">点击查看名片 →</span>`;
+        if (p.seriesType === 'effectScatter' || p.seriesType === 'scatter') {
+          const v = p.data.v;
+          if (!v) return esc(p.name);
+          return `<b style="font-size:14px">${esc(v.name)}</b><br>
+            <span style="color:#B9C4B6">${esc(regionText(v))}</span><br>
+            <span>${esc(v.tagline || '')}</span><br>
+            <span style="color:#F4D98A;font-size:12px">点击查看名片 →</span>`;
+        }
+        if (p.seriesType === 'map') {
+          const n = (p.data && p.data.value) || 0;
+          const name = esc(p.name || '');
+          if (n > 0) {
+            return `<b style="font-size:14px">${name}</b><br>
+              <span style="color:#C6D8BC">收录 ${n} 个乡村</span><br>
+              ${isChina ? '<span style="color:#F4D98A;font-size:12px">点击筛选该省乡村 →</span>' : ''}`;
+          }
+          return `<b style="font-size:14px">${name}</b><br><span style="color:#B9C4B6">暂无收录</span>`;
+        }
+        return esc(p.name || '');
       }
     },
     geo: Object.assign({
-      map: meta.map, roam: true,
+      map: meta.map,
+      roam: { scaleLimit: { min: MAP_ZOOM_MIN, max: MAP_ZOOM_MAX } },
       label: { show: false },
-      itemStyle: { areaColor: '#F2EEE3', borderColor: '#CFC6AE', borderWidth: .8 },
-      emphasis: { label: { show: true, color: '#2C2A24', fontSize: 12 }, itemStyle: { areaColor: '#E3E9DC' } },
-      select: { label: { show: false }, itemStyle: { areaColor: '#F2EEE3' } }
-    }, meta.center ? { center: meta.center, zoom: meta.zoom } : { zoom: 1.05 }),
-    series: [{
-      name: '已点亮乡村', type: 'effectScatter', coordinateSystem: 'geo',
-      rippleEffect: { brushType: 'stroke', scale: 3.6, period: 4 },
-      symbolSize: 12, itemStyle: { color: '#4A6B53' }, zlevel: 2,
-      data: list.map((v) => ({ name: v.name, value: [v.lng, v.lat], v }))
-    }]
+      itemStyle: {
+        areaColor: MAP_TINT_EMPTY,
+        borderColor: 'rgba(74,107,83,.32)',
+        borderWidth: 1,
+        shadowColor: 'rgba(44,42,36,.14)',
+        shadowBlur: 18,
+        shadowOffsetY: 7
+      },
+      emphasis: { label: { show: false }, itemStyle: { areaColor: '#E9E1CD' } },
+      select: { disabled: true },
+      zlevel: 0
+    }, { zoom: view.zoom }, (view.center ? { center: view.center } : {})),
+    // 填色映射：0 用纸色，1/2/3-5/≥6 四级绿，越深表示收录越多
+    visualMap: {
+      type: 'piecewise',
+      show: false,
+      seriesIndex: 0,
+      pieces: [
+        { min: 6, color: '#7FAE77' },
+        { min: 3, max: 5, color: '#98C08B' },
+        { min: 2, max: 2, color: '#B4D0A4' },
+        { min: 1, max: 1, color: '#D2E2C3' },
+        { value: 0, color: '#EBE4D3' }
+      ]
+    },
+    series: [
+      {
+        // 填色层：用收录量表达“分布”，并承接省份悬浮/点击
+        name: '收录分布',
+        type: 'map',
+        geoIndex: 0,
+        zlevel: 1,
+        data: regionData,
+        label: { show: false },
+        itemStyle: { areaColor: MAP_TINT_EMPTY, borderColor: 'rgba(74,107,83,.32)', borderWidth: 1 },
+        emphasis: {
+          label: {
+            show: true, color: '#2C2A24', fontSize: 12, fontWeight: 600,
+            textBorderColor: 'rgba(255,255,255,.8)', textBorderWidth: 2
+          },
+          itemStyle: {
+            areaColor: '#F0D98F',
+            borderColor: '#9E3B2E',
+            borderWidth: 1.6,
+            shadowColor: 'rgba(158,59,46,.35)',
+            shadowBlur: 14
+          }
+        },
+        select: { disabled: true }
+      },
+      {
+        name: '已点亮乡村',
+        type: 'effectScatter',
+        coordinateSystem: 'geo',
+        zlevel: 2,
+        rippleEffect: { brushType: 'stroke', scale: 3.4, period: 4, number: 3 },
+        symbol: 'circle',
+        symbolSize: 11,
+        itemStyle: {
+          color: '#9E3B2E',
+          borderColor: 'rgba(255,250,240,.92)',
+          borderWidth: 1.2,
+          shadowColor: 'rgba(158,59,46,.45)',
+          shadowBlur: 8
+        },
+        emphasis: { scale: 1.6, itemStyle: { color: '#C8553F' } },
+        data: list.map((v) => ({ name: v.name, value: [v.lng, v.lat], v }))
+      }
+    ]
   });
 
   chart.off('click');
   chart.on('click', (p) => {
-    if (p.data && p.data.v) openDetail(p.data.v.id);
+    if (p.data && p.data.v) { openDetail(p.data.v.id); return; }
+    if (p.seriesType === 'map' && isChina) {
+      const prov = p.name;
+      const n = (p.data && p.data.value) || 0;
+      if (!n) return;
+      state.filters.province = state.filters.province === prov ? '' : prov;
+      renderFilters(); renderVList(); initMap();
+    }
   });
+
+  chart.off('georoam');
+  chart.on('georoam', () => {
+    const g = currentMapGeo();
+    if (g) mapView = { zoom: g.zoom, center: g.center || null };
+    syncMapTools();
+  });
+
+  // 交互提示随底图范围变化
+  const hint = document.querySelector('.map-hint span');
+  if (hint) {
+    hint.textContent = isChina
+      ? '滚轮 / 双指缩放 · 拖动平移 · 点击省份可筛选该省乡村'
+      : '滚轮 / 双指缩放 · 拖动平移 · 点击光点查看名片';
+  }
+
+  wireMapTools();
+  syncMapTools();
+  const tools = document.getElementById('map-tools');
+  if (tools) requestAnimationFrame(() => tools.classList.add('is-ready'));
 }
 
 /* ============================================================

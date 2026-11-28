@@ -35,6 +35,7 @@ Homewood (旧林游) turns every Chinese village into a shareable **digital call
 | Backend | Node.js built-in `http` only — **zero runtime dependencies** |
 | Frontend | Vanilla HTML / CSS / JS single-page app (hash routing) |
 | Visualization | Bundled [Apache ECharts](https://echarts.apache.org/) + offline map GeoJSON |
+| Motion | Bundled [GSAP](https://gsap.com/) + ScrollTrigger as a **local ESM vendor file** (`public/vendor/gsap-esm.js`, consumed by `public/motion.js`) — no runtime npm dependency; `gsap` in `package.json` is build-time only (`npm run build:gsap`) |
 | Data | Managed Postgres via PostgREST (Supabase), seeded idempotently from local files |
 
 ## How it works · 运行原理
@@ -56,28 +57,33 @@ data-villages.js / data-routes.js   (local seed)
 ```
 .
 ├── server.js            # entrypoint: static hosting + read-only API + idempotent seeding
-├── package.json         # name=homewood · type=commonjs · main=server.js · engines node>=22 · no deps
+├── package.json         # name=homewood · type=commonjs · main=server.js · engines node>=22 · gsap is build-only
+├── build-gsap-esm.mjs   # builds public/vendor/gsap-esm.js from the gsap package (only needed to re-bundle)
 ├── data-villages.js     # village seed data (profile/history/culture/produce/spots/honors/people + sources)
 ├── data-routes.js       # curated route seed data (day nodes / provenance / caveat / source)
 ├── README.md
 ├── .gitignore
 └── public/              # frontend assets served by server.js
-    ├── index.html       # SPA shell
-    ├── app.js           # all client logic (map, cards, routes, detail overlays, search)
-    ├── style.css        # design tokens + 国风 styling + module backdrops + a11y
-    ├── vendor/          # echarts.min.js + map GeoJSON (china / chongqing / sichuan / provinces)
+    ├── index.html       # SPA shell (loads /motion.js as an ES module)
+    ├── app.js           # all client logic (map, cards, routes, detail overlays, search, ROUTE_MEDIA)
+    ├── motion.js        # GSAP scroll motion module (browser ESM, imports /vendor/gsap-esm.js)
+    ├── style.css        # design tokens + 国风 styling + dark-gold nav/footer + module backdrops + mobile @media + a11y
+    ├── favicon.ico      # site icons (+ img/favicon-*, apple-touch-icon, icon-512)
+    ├── vendor/          # echarts.min.js + gsap-esm.js + map GeoJSON (china / chongqing / sichuan / provinces)
     └── img/             # village photos, module backdrops, logo
 ```
 
 ## Getting started · 快速开始
 
-Requires **Node.js ≥ 22**. No install step is needed (no dependencies).
+Requires **Node.js ≥ 22**. **No install step is needed to run the demo** — the server uses only built-in modules and the frontend consumes the pre-bundled GSAP vendor file.
 
 ```bash
 # run locally
 npm start            # same as: node server.js
 # open http://localhost:8081
 ```
+
+> Only if you want to **re-bundle GSAP** after changing `motion.js`: `npm install && npm run build:gsap` (regenerates `public/vendor/gsap-esm.js`). Not required for normal use.
 
 Static pages and all client logic run without a database. The `/api/*` data endpoints require the environment variables below; otherwise they return `数据库未就绪`.
 
